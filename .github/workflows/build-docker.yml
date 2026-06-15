@@ -29,6 +29,5 @@ jobs:
           context: .
           push: true
           tags: archerduan/new-api:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          no-cache: true
           platforms: linux/amd64
