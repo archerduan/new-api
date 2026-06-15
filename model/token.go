@@ -349,6 +349,31 @@ func (token *Token) GetModelLimitsMap() map[string]bool {
 	return limitsMap
 }
 
+func (token *Token) GetGroups() []string {
+	if token.Group == "" {
+		return []string{}
+	}
+	groups := strings.Split(token.Group, ",")
+	result := make([]string, 0, len(groups))
+	for _, group := range groups {
+		g := strings.TrimSpace(group)
+		if g != "" {
+			result = append(result, g)
+		}
+	}
+	return result
+}
+
+func (token *Token) HasGroup(group string) bool {
+	groups := token.GetGroups()
+	for _, g := range groups {
+		if g == group {
+			return true
+		}
+	}
+	return false
+}
+
 func DisableModelLimits(tokenId int) error {
 	token, err := GetTokenById(tokenId)
 	if err != nil {
