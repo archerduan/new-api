@@ -9,6 +9,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    
+    env:
+      DOCKER_USERNAME: archerduan
 
     steps:
       - name: Checkout code
@@ -20,7 +23,7 @@ jobs:
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          username: archerduan
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Extract version
