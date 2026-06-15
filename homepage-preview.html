@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New API 首页预览</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+        .gradient-text {
+            background: linear-gradient(to right, #60a5fa, #a78bfa, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .section-container {
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 32px;
+            background: white;
+        }
+        .section-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #1f2937;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #3b82f6;
+        }
+        .content-preview {
+            background: #f9fafb;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+        }
+        .badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 12px;
+            margin: 4px;
+        }
+        .feature-card {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 8px 0;
+            background: white;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 p-8">
+    <div class="max-w-6xl mx-auto">
+        <h1 class="text-4xl font-bold mb-8 text-center text-gray-900">New API 首页内容预览</h1>
+        <p class="text-center text-gray-600 mb-12">以下是首页各个区块的内容展示，方便你了解并提出修改建议</p>
+
+        <!-- Hero Section -->
+        <div class="section-container">
+            <div class="section-title">🎯 Hero 区域（首屏主视觉）</div>
+            <div class="content-preview">
+                <span class="badge bg-blue-100 text-blue-600">🔵 AI Application Infrastructure Foundation</span>
+
+                <h2 class="text-5xl font-bold mt-6 mb-4">
+                    Unified API Gateway for<br>
+                    <span class="gradient-text">Vast Range of AI Models</span>
+                </h2>
+
+                <p class="text-gray-600 text-lg mb-6 max-w-2xl">
+                    Access a vast selection of models via a standard, unified API protocol. Power AI applications, manage digital assets, and connect the Future.
+                </p>
+
+                <div class="flex gap-4 mb-8">
+                    <button class="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700">Get Started →</button>
+                    <button class="border border-gray-300 px-6 py-3 rounded-lg font-medium hover:bg-gray-50">View Pricing</button>
+                    <button class="border border-gray-300 px-6 py-3 rounded-lg font-medium hover:bg-gray-50">📖 Docs</button>
+                </div>
+
+                <div class="mt-6">
+                    <p class="text-xs text-gray-500 uppercase tracking-wider mb-2">SUPPORTED APPLICATIONS</p>
+                    <p class="text-sm text-gray-600 mb-3">Supports one-click configuration and perfectly adapts to NewAPI multi-protocol configuration.</p>
+                    <div class="flex gap-3 flex-wrap">
+                        <span class="badge bg-white border border-gray-200">🍒 Cherry Studio</span>
+                        <span class="badge bg-white border border-gray-200">🔄 CC Switch</span>
+                        <span class="badge bg-white border border-gray-200">··· More Apps</span>
+                    </div>
+                </div>
+
+                <div class="mt-6 bg-gray-800 text-green-400 p-4 rounded-lg font-mono text-sm">
+                    <div>$ curl https://api.example.com/v1/chat/completions \</div>
+                    <div class="ml-4">-H "Authorization: Bearer sk-..." \</div>
+                    <div class="ml-4">-d '{"model": "gpt-4", "messages": [...]}'</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Section -->
+        <div class="section-container">
+            <div class="section-title">📊 Stats 区域（数据统计）</div>
+            <div class="content-preview">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+                    <div>
+                        <div class="text-4xl font-bold text-gray-900">50+</div>
+                        <div class="text-sm text-gray-600 mt-2">upstream services integrated</div>
+                    </div>
+                    <div>
+                        <div class="text-4xl font-bold text-gray-900">100+</div>
+                        <div class="text-sm text-gray-600 mt-2">model billing support</div>
+                    </div>
+                    <div>
+                        <div class="text-4xl font-bold text-gray-900">50+</div>
+                        <div class="text-sm text-gray-600 mt-2">compatible API routes</div>
+                    </div>
+                    <div>
+                        <div class="text-4xl font-bold text-gray-900">10+</div>
+                        <div class="text-sm text-gray-600 mt-2">scheduling controls</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Features Section -->
+        <div class="section-container">
+            <div class="section-title">✨ Features 区域（核心特性）</div>
+            <div class="content-preview">
+                <p class="text-xs text-gray-500 uppercase tracking-wider mb-2">CORE FEATURES</p>
+                <h3 class="text-3xl font-bold mb-8">Built for developers,<br>designed for scale</h3>
+
+                <div class="grid md:grid-cols-3 gap-4 mb-8">
+                    <div class="feature-card md:col-span-2">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="badge bg-gray-100 text-gray-700">01</span>
+                            <span class="font-semibold">⚡ Lightning Fast</span>
+                        </div>
+                        <p class="text-sm text-gray-600">Optimized network architecture ensures millisecond response times</p>
+                        <div class="grid grid-cols-3 gap-2 mt-3">
+                            <span class="badge bg-gray-50 border border-gray-200">OpenAI</span>
+                            <span class="badge bg-gray-50 border border-gray-200">Claude</span>
+                            <span class="badge bg-gray-50 border border-gray-200">Gemini</span>
+                            <span class="badge bg-gray-50 border border-gray-200">DeepSeek</span>
+                            <span class="badge bg-gray-50 border border-gray-200">Qwen</span>
+                            <span class="badge bg-gray-50 border border-gray-200">Llama</span>
+                        </div>
+                    </div>
+                    <div class="feature-card">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="badge bg-gray-100 text-gray-700">02</span>
+                            <span class="font-semibold">🛡️ Secure & Reliable</span>
+                        </div>
+                        <p class="text-sm text-gray-600">Enterprise-grade security with comprehensive permission management</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="badge bg-gray-100 text-gray-700">03</span>
+                            <span class="font-semibold">🌍 Global Coverage</span>
+                        </div>
+                        <p class="text-sm text-gray-600">Multi-region deployment for stable global access</p>
+                    </div>
+                    <div class="feature-card md:col-span-2">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="badge bg-gray-100 text-gray-700">04</span>
+                            <span class="font-semibold">💻 Developer Friendly</span>
+                        </div>
+                        <p class="text-sm text-gray-600">Compatible API routes for common AI application workflows</p>
+                    </div>
+                </div>
+
+                <h4 class="font-semibold mb-4">Additional Features:</h4>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+                    <div class="text-center">
+                        <div class="text-2xl mb-2">⚙️</div>
+                        <div class="font-semibold text-sm mb-1">High Performance</div>
+                        <div class="text-xs text-gray-600">Support for high concurrency with automatic load balancing</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl mb-2">💰</div>
+                        <div class="font-semibold text-sm mb-1">Transparent Billing</div>
+                        <div class="text-xs text-gray-600">Pay-as-you-go with real-time usage monitoring</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl mb-2">👥</div>
+                        <div class="font-semibold text-sm mb-1">Team Collaboration</div>
+                        <div class="text-xs text-gray-600">Multi-user management with flexible permission allocation</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl mb-2">💝</div>
+                        <div class="font-semibold text-sm mb-1">Open Source</div>
+                        <div class="text-xs text-gray-600">Community driven, self-hosted, and extensible</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- How It Works Section -->
+        <div class="section-container">
+            <div class="section-title">🔄 How It Works 区域（使用流程）</div>
+            <div class="content-preview">
+                <p class="text-xs text-gray-500 uppercase tracking-wider mb-2 text-center">HOW IT WORKS</p>
+                <h3 class="text-3xl font-bold mb-12 text-center">Three steps to get started</h3>
+
+                <div class="grid md:grid-cols-3 gap-8">
+                    <div class="text-center">
+                        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl border-2 border-gray-200 bg-gray-50 mb-4 relative">
+                            <span class="text-2xl">⚙️</span>
+                            <span class="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-gray-900 text-white text-xs font-bold flex items-center justify-center">1</span>
+                        </div>
+                        <h4 class="font-semibold mb-2">Configure</h4>
+                        <p class="text-sm text-gray-600">Add your API keys, set up channels and configure access permissions</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl border-2 border-gray-200 bg-gray-50 mb-4 relative">
+                            <span class="text-2xl">⚡</span>
+                            <span class="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-gray-900 text-white text-xs font-bold flex items-center justify-center">2</span>
+                        </div>
+                        <h4 class="font-semibold mb-2">Connect</h4>
+                        <p class="text-sm text-gray-600">Connect through OpenAI, Claude, Gemini, and other compatible API routes</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl border-2 border-gray-200 bg-gray-50 mb-4 relative">
+                            <span class="text-2xl">📊</span>
+                            <span class="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-gray-900 text-white text-xs font-bold flex items-center justify-center">3</span>
+                        </div>
+                        <h4 class="font-semibold mb-2">Monitor</h4>
+                        <p class="text-sm text-gray-600">Track usage, costs and performance with real-time analytics</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CTA Section -->
+        <div class="section-container">
+            <div class="section-title">🚀 CTA 区域（行动号召）</div>
+            <div class="content-preview text-center">
+                <h3 class="text-3xl font-bold mb-4">
+                    Ready to simplify<br>
+                    <span class="gradient-text">your AI integration?</span>
+                </h3>
+                <p class="text-gray-600 mb-6 max-w-md mx-auto">
+                    Deploy your own gateway and start routing requests through your configured upstream services.
+                </p>
+                <div class="flex gap-3 justify-center">
+                    <button class="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700">Get Started →</button>
+                    <button class="border border-gray-300 px-6 py-3 rounded-lg font-medium hover:bg-gray-50">View Pricing</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 修改说明 -->
+        <div class="bg-blue-50 border-2 border-blue-200 rounded-xl p-6 mt-12">
+            <h3 class="text-xl font-bold text-blue-900 mb-3">💡 如何修改？</h3>
+            <p class="text-blue-800 mb-4">请告诉我你想修改哪些内容，例如：</p>
+            <ul class="list-disc list-inside text-blue-800 space-y-2">
+                <li>修改标题文字、描述文字</li>
+                <li>调整数据统计的数字</li>
+                <li>增加或删除某个特性</li>
+                <li>修改按钮文字或链接</li>
+                <li>调整支持的应用列表</li>
+                <li>修改使用流程步骤</li>
+            </ul>
+            <p class="text-blue-800 mt-4 font-semibold">我会根据你的要求修改对应的组件文件。</p>
+        </div>
+    </div>
+</body>
+</html>
