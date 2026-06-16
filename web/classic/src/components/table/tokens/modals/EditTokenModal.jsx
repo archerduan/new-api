@@ -79,7 +79,7 @@ const EditTokenModal = (props) => {
     model_limits_enabled: false,
     model_limits: [],
     allow_ips: '',
-    group: '',
+    group: [],
     cross_group_retry: false,
     tokenCount: 1,
   });
@@ -169,6 +169,12 @@ const EditTokenModal = (props) => {
       } else {
         data.model_limits = [];
       }
+      // Convert group string to array for multiple selection
+      if (data.group && data.group !== '') {
+        data.group = data.group.split(',').map(g => g.trim());
+      } else {
+        data.group = [];
+      }
       data.remain_amount = Number(
         quotaToDisplayAmount(data.remain_quota || 0).toFixed(6),
       );
@@ -238,6 +244,10 @@ const EditTokenModal = (props) => {
       }
       localInputs.model_limits = localInputs.model_limits.join(',');
       localInputs.model_limits_enabled = localInputs.model_limits.length > 0;
+      // Convert group array to comma-separated string
+      if (Array.isArray(localInputs.group)) {
+        localInputs.group = localInputs.group.join(',');
+      }
       let res = await API.put(`/api/token/`, {
         ...localInputs,
         id: parseInt(props.editingToken.id),
@@ -282,6 +292,10 @@ const EditTokenModal = (props) => {
         }
         localInputs.model_limits = localInputs.model_limits.join(',');
         localInputs.model_limits_enabled = localInputs.model_limits.length > 0;
+        // Convert group array to comma-separated string
+        if (Array.isArray(localInputs.group)) {
+          localInputs.group = localInputs.group.join(',');
+        }
         let res = await API.post(`/api/token/`, localInputs);
         const { success, message } = res.data;
         if (success) {
@@ -398,6 +412,7 @@ const EditTokenModal = (props) => {
                               option.label.toLowerCase().includes(q))
                           );
                         }}
+                        multiple
                         showClear
                         style={{ width: '100%' }}
                       />
@@ -413,7 +428,7 @@ const EditTokenModal = (props) => {
                   <Col
                     span={24}
                     style={{
-                      display: values.group === 'auto' ? 'block' : 'none',
+                      display: (Array.isArray(values.group) && values.group.includes('auto')) || values.group === 'auto' ? 'block' : 'none',
                     }}
                   >
                     <Form.Switch
