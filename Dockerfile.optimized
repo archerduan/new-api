@@ -1,0 +1,62 @@
+# 优化版 Dockerfile - 只构建 default 前端，减少内存占用
+
+# 阶段1: 构建前端 (default only)
+FROM oven/bun:1 AS frontend-builder
+
+WORKDIR /build/web
+COPY web/package.json web/bun.lock ./
+COPY web/default/package.json ./default/package.json
+COPY web/classic/package.json ./classic/package.json
+# 移除 --frozen-lockfile 允许重试失败的包
+RUN bun install
+
+COPY ./web/default ./default
+COPY ./VERSION /build/VERSION
+
+# 构建前端，禁用 ESLint 减少内存
+RUN cd default && \
+    DISABLE_ESLINT_PLUGIN='true' \
+    VITE_REACT_APP_VERSION=$(cat /build/VERSION) \
+    NODE_OPTIONS="--max-old-space-size=2048" \
+    bun run build
+
+# 阶段2: 构建后端
+FROM golang:1.26.1-alpine AS backend-builder
+
+ENV GO111MODULE=on CGO_ENABLED=0
+ARG TARGETOS
+ARG TARGETARCH
+ENV GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64}
+ENV GOEXPERIMENT=greenteagc
+
+WORKDIR /build
+
+# 下载依赖
+ADD go.mod go.sum ./
+RUN go mod download
+
+# 复制代码和前端构建结果
+COPY . .
+COPY --from=frontend-builder /build/web/default/dist ./web/default/dist
+
+# 创建空的 classic 前端目录（避免 embed 报错）
+RUN mkdir -p web/classic/dist && \
+    echo '<!doctype html><html><head><title>Classic UI Not Built</title></head><body>Use default theme</body></html>' > web/classic/dist/index.html
+
+# 编译后端
+RUN go build -ldflags "-s -w -X 'github.com/QuantumNous/new-api/common.Version=$(cat VERSION)'" -o new-api
+
+# 阶段3: 最终运行镜像
+FROM debian:bookworm-slim
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates tzdata wget \
+    && rm -rf /var/lib/apt/lists/* \
+    && update-ca-certificates
+
+COPY --from=backend-builder /build/new-api /
+COPY LICENSE NOTICE THIRD-PARTY-LICENSES.md /licenses/
+
+EXPOSE 3000
+WORKDIR /data
+ENTRYPOINT ["/new-api"]
