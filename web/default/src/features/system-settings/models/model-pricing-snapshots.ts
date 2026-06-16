@@ -31,11 +31,13 @@ export type ModelPricingSnapshotInput = {
   audioCompletionRatio: string
   billingMode: string
   billingExpr: string
+  resolutionPrice: string
 }
 
 export type ModelPricingSnapshot = {
   name: string
   price?: string
+  resolutionPrice?: string
   ratio?: string
   cacheRatio?: string
   createCacheRatio?: string
@@ -174,6 +176,7 @@ export const buildModelSnapshots = ({
   audioCompletionRatio,
   billingMode,
   billingExpr,
+  resolutionPrice,
 }: ModelPricingSnapshotInput): ModelPricingSnapshot[] => {
   const priceMap = safeJsonParse<Record<string, number>>(modelPrice, {
     fallback: {},
@@ -215,6 +218,10 @@ export const buildModelSnapshots = ({
     fallback: {},
     context: 'billing expression',
   })
+  const resolutionPriceMap = safeJsonParse<Record<string, unknown>>(resolutionPrice, {
+    fallback: {},
+    context: 'resolution price',
+  })
 
   const modelNames = new Set([
     ...Object.keys(priceMap),
@@ -227,6 +234,7 @@ export const buildModelSnapshots = ({
     ...Object.keys(audioCompletionMap),
     ...Object.keys(billingModeMap),
     ...Object.keys(billingExprMap),
+    ...Object.keys(resolutionPriceMap),
   ])
 
   return Array.from(modelNames).map((name) => {
@@ -261,9 +269,36 @@ export const buildModelSnapshots = ({
       }
     }
 
+    if (modeForModel === 'resolution') {
+      const resPrice = resolutionPriceMap[name]
+      let resPriceStr = ''
+      if (resPrice !== undefined && resPrice !== null) {
+        if (typeof resPrice === 'object') {
+          resPriceStr = JSON.stringify(resPrice)
+        } else {
+          resPriceStr = String(resPrice)
+        }
+      }
+      return {
+        name,
+        billingMode: 'per-resolution',
+        resolutionPrice: resPriceStr,
+        price,
+        ratio,
+        cacheRatio: cache,
+        createCacheRatio: createCache,
+        completionRatio: completion,
+        imageRatio: image,
+        audioRatio: audio,
+        audioCompletionRatio: audioCompletion,
+        hasConflict: false,
+      }
+    }
+
     return {
       name,
       price,
+      resolutionPrice: '',
       ratio,
       cacheRatio: cache,
       createCacheRatio: createCache,
@@ -289,6 +324,7 @@ export const getSnapshotSignature = (snapshot?: ModelPricingSnapshot) => {
   if (!snapshot) return ''
   return JSON.stringify({
     price: snapshot.price || '',
+    resolutionPrice: snapshot.resolutionPrice || '',
     ratio: snapshot.ratio || '',
     cacheRatio: snapshot.cacheRatio || '',
     createCacheRatio: snapshot.createCacheRatio || '',

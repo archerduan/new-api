@@ -73,6 +73,7 @@ type ModelRatioVisualEditorProps = {
   savedAudioCompletionRatio: string
   savedBillingMode: string
   savedBillingExpr: string
+  savedResolutionPrice: string
   modelPrice: string
   modelRatio: string
   cacheRatio: string
@@ -83,6 +84,7 @@ type ModelRatioVisualEditorProps = {
   audioCompletionRatio: string
   billingMode: string
   billingExpr: string
+  resolutionPrice: string
   onChange: (field: string, value: string) => void
   onSave: () => void | Promise<void>
   isSaving: boolean
@@ -109,6 +111,7 @@ const ModelRatioVisualEditorComponent = forwardRef<
     savedAudioCompletionRatio,
     savedBillingMode,
     savedBillingExpr,
+    savedResolutionPrice,
     modelPrice,
     modelRatio,
     cacheRatio,
@@ -119,6 +122,7 @@ const ModelRatioVisualEditorComponent = forwardRef<
     audioCompletionRatio,
     billingMode,
     billingExpr,
+    resolutionPrice,
     onChange,
     onSave,
     isSaving,
@@ -483,6 +487,10 @@ const ModelRatioVisualEditorComponent = forwardRef<
         billingExpr,
         { fallback: {}, silent: true }
       )
+      const resolutionPriceMap = safeJsonParse<Record<string, unknown>>(
+        resolutionPrice,
+        { fallback: {}, silent: true }
+      )
 
       const setIfPresent = (
         target: Record<string, number>,
@@ -505,6 +513,7 @@ const ModelRatioVisualEditorComponent = forwardRef<
         delete audioCompletionMap[name]
         delete billingModeMap[name]
         delete billingExprMap[name]
+        delete resolutionPriceMap[name]
 
         if (data.billingMode === 'tiered_expr') {
           const combined = combineBillingExpr(
@@ -527,6 +536,19 @@ const ModelRatioVisualEditorComponent = forwardRef<
           setIfPresent(imageMap, name, data.imageRatio)
           setIfPresent(audioMap, name, data.audioRatio)
           setIfPresent(audioCompletionMap, name, data.audioCompletionRatio)
+        } else if (data.billingMode === 'per-resolution') {
+          billingModeMap[name] = 'resolution'
+          if (data.resolutionPrice && data.resolutionPrice !== '') {
+            try {
+              const parsed = JSON.parse(data.resolutionPrice)
+              resolutionPriceMap[name] = parsed
+            } catch {
+              const num = parseFloat(data.resolutionPrice)
+              if (Number.isFinite(num)) {
+                resolutionPriceMap[name] = num
+              }
+            }
+          }
         } else if (data.price && data.price !== '') {
           setIfPresent(priceMap, name, data.price)
         } else {
@@ -558,6 +580,10 @@ const ModelRatioVisualEditorComponent = forwardRef<
       onChange(
         'billing_setting.billing_expr',
         JSON.stringify(billingExprMap, null, 2)
+      )
+      onChange(
+        'resolution_price_setting',
+        JSON.stringify(resolutionPriceMap, null, 2)
       )
     },
     [
