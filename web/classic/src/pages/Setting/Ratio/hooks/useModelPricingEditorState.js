@@ -1142,6 +1142,11 @@ export function useModelPricingEditorState({
             try {
               const parsed = JSON.parse(model.resolutionPrice);
               // Convert model-specific resolution prices to flat format
+<<<<<<< HEAD
+=======
+              // Input: {"1K": 0.792, "4K": 1.418}
+              // Output: {"1K:modelName": 0.792, "4K:modelName": 1.418}
+>>>>>>> 4c4c8606892470df30ff33117130e7297c0fe564
               if (typeof parsed === 'object' && !Array.isArray(parsed)) {
                 Object.entries(parsed).forEach(([resolution, price]) => {
                   const key = `${resolution}:${model.name}`;

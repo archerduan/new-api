@@ -636,6 +636,7 @@ const ModelRatioVisualEditorComponent = forwardRef<
       audioCompletionRatio,
       billingMode,
       billingExpr,
+      resolutionPrice,
       onChange,
     ]
   )
