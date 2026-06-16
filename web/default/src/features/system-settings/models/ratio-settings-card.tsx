@@ -32,7 +32,9 @@ import { useUpdateOption } from '../hooks/use-update-option'
 import { GroupRatioForm } from './group-ratio-form'
 import { ModelRatioForm } from './model-ratio-form'
 import { ToolPriceSettings } from './tool-price-settings'
+import { ResolutionPriceSettings } from './resolution-price-settings'
 import { UpstreamRatioSync } from './upstream-ratio-sync'
+import { UnsetPricingModels } from './unset-pricing-models'
 import {
   formatJsonForTextarea,
   type JsonValidationError,
@@ -128,12 +130,13 @@ const createGroupSchema = (t: Translate) =>
 
 type ModelFormValues = z.infer<ReturnType<typeof createModelSchema>>
 type GroupFormValues = z.infer<ReturnType<typeof createGroupSchema>>
-type RatioTabId = 'models' | 'groups' | 'tool-prices' | 'upstream-sync'
+type RatioTabId = 'models' | 'groups' | 'tool-prices' | 'resolution-prices' | 'upstream-sync' | 'unset-models'
 
 type RatioSettingsCardProps = {
   modelDefaults: ModelFormValues
   groupDefaults: GroupFormValues
   toolPricesDefault: string
+  resolutionPricesDefault: string
   titleKey?: string
   visibleTabs?: RatioTabId[]
 }
@@ -142,8 +145,9 @@ export function RatioSettingsCard({
   modelDefaults,
   groupDefaults,
   toolPricesDefault,
+  resolutionPricesDefault,
   titleKey = 'Pricing Ratios',
-  visibleTabs = ['models', 'groups', 'tool-prices', 'upstream-sync'],
+  visibleTabs = ['models', 'groups', 'tool-prices', 'resolution-prices', 'unset-models', 'upstream-sync'],
 }: RatioSettingsCardProps) {
   const { t } = useTranslation()
   const updateOption = useUpdateOption()
@@ -386,7 +390,9 @@ export function RatioSettingsCard({
     models: 'Model prices',
     groups: 'Group ratios',
     'tool-prices': 'Tool prices',
+    'resolution-prices': 'Resolution prices',
     'upstream-sync': 'Upstream price sync',
+    'unset-models': 'Unset pricing models',
   }
   const tabsGridClass =
     {
@@ -394,7 +400,9 @@ export function RatioSettingsCard({
       2: 'grid-cols-2',
       3: 'grid-cols-3',
       4: 'grid-cols-4',
-    }[visibleTabs.length] ?? 'grid-cols-4'
+      5: 'grid-cols-5',
+      6: 'grid-cols-6',
+    }[visibleTabs.length] ?? 'grid-cols-6'
   const defaultTab = visibleTabs[0] ?? 'models'
 
   const renderTabContent = (tab: RatioTabId) => {
@@ -421,6 +429,28 @@ export function RatioSettingsCard({
     }
     if (tab === 'tool-prices') {
       return <ToolPriceSettings defaultValue={toolPricesDefault} />
+    }
+    if (tab === 'resolution-prices') {
+      return <ResolutionPriceSettings defaultValue={resolutionPricesDefault} />
+    }
+    if (tab === 'unset-models') {
+      return (
+        <UnsetPricingModels
+          modelDefaults={{
+            ModelPrice: modelDefaults.ModelPrice,
+            ModelRatio: modelDefaults.ModelRatio,
+            CacheRatio: modelDefaults.CacheRatio,
+            CreateCacheRatio: modelDefaults.CreateCacheRatio,
+            CompletionRatio: modelDefaults.CompletionRatio,
+            ImageRatio: modelDefaults.ImageRatio,
+            AudioRatio: modelDefaults.AudioRatio,
+            AudioCompletionRatio: modelDefaults.AudioCompletionRatio,
+            BillingMode: modelDefaults.BillingMode,
+            BillingExpr: modelDefaults.BillingExpr,
+          }}
+          onRefresh={() => queryClient.invalidateQueries({ queryKey: ['system-options'] })}
+        />
+      )
     }
     return (
       <UpstreamRatioSync
