@@ -31,6 +31,7 @@ const EMPTY_MODEL = {
   name: '',
   billingMode: 'per-token',
   fixedPrice: '',
+  resolutionPrice: '',
   inputPrice: '',
   completionPrice: '',
   lockedCompletionRatio: '',
@@ -133,6 +134,26 @@ const buildModelState = (name, sourceMaps) => {
       billingMode: 'tiered_expr',
       billingExpr,
       requestRuleExpr,
+      rawRatios: { ...EMPTY_MODEL.rawRatios },
+      hasConflict: false,
+    };
+  }
+
+  if (billingMode === 'resolution') {
+    const resolutionPriceRaw = sourceMaps.ResolutionPrice?.[name];
+    let resolutionPrice = '';
+    if (resolutionPriceRaw !== undefined && resolutionPriceRaw !== null) {
+      if (typeof resolutionPriceRaw === 'object') {
+        resolutionPrice = JSON.stringify(resolutionPriceRaw);
+      } else {
+        resolutionPrice = String(resolutionPriceRaw);
+      }
+    }
+    return {
+      ...EMPTY_MODEL,
+      name,
+      billingMode: 'per-resolution',
+      resolutionPrice,
       rawRatios: { ...EMPTY_MODEL.rawRatios },
       hasConflict: false,
     };
@@ -301,6 +322,21 @@ export const buildSummaryText = (model, t) => {
       return `${t('表达式计费')}${requestRuleSuffix}`;
     }
     return `${t('阶梯计费')} (${tierCount} ${t('档')})${requestRuleSuffix}`;
+  }
+
+  if (model.billingMode === 'per-resolution') {
+    if (!hasValue(model.resolutionPrice)) {
+      return `${t('按分辨率')}${requestRuleSuffix}`;
+    }
+    try {
+      const parsed = JSON.parse(model.resolutionPrice);
+      if (typeof parsed === 'object' && parsed !== null) {
+        const keys = Object.keys(parsed);
+        const count = keys.length;
+        return `${t('按分辨率')} (${count} ${t('档')})${requestRuleSuffix}`;
+      }
+    } catch {}
+    return `${t('按分辨率')}${requestRuleSuffix}`;
   }
 
   if (model.billingMode === 'per-request' && hasValue(model.fixedPrice)) {
@@ -487,6 +523,22 @@ export const buildPreviewRows = (model, t) => {
     return rows;
   }
 
+  if (model.billingMode === 'per-resolution') {
+    const rows = [
+      {
+        key: 'BillingMode',
+        label: 'ModelBillingMode',
+        value: 'resolution',
+      },
+      {
+        key: 'ResolutionPrice',
+        label: 'resolution_price_setting',
+        value: hasValue(model.resolutionPrice) ? model.resolutionPrice : t('空'),
+      },
+    ];
+    return rows;
+  }
+
   if (model.billingMode === 'per-request') {
     const rows = [
       {
@@ -648,6 +700,7 @@ export function useModelPricingEditorState({
       AudioCompletionRatio: parseOptionJSON(options.AudioCompletionRatio),
       ModelBillingMode: parseOptionJSON(options['billing_setting.billing_mode']),
       ModelBillingExpr: parseOptionJSON(options['billing_setting.billing_expr']),
+      ResolutionPrice: parseOptionJSON(options.resolution_price_setting),
     };
 
     const names = new Set([
@@ -663,6 +716,7 @@ export function useModelPricingEditorState({
       ...Object.keys(sourceMaps.AudioCompletionRatio),
       ...Object.keys(sourceMaps.ModelBillingMode),
       ...Object.keys(sourceMaps.ModelBillingExpr),
+      ...Object.keys(sourceMaps.ResolutionPrice),
     ]);
 
     const nextModels = Array.from(names)
@@ -872,6 +926,14 @@ export function useModelPricingEditorState({
     });
   };
 
+  const handleFieldChange = (field, value) => {
+    if (!selectedModel) return;
+    upsertModel(selectedModel.name, (model) => ({
+      ...model,
+      [field]: value,
+    }));
+  };
+
   const handleBillingModeChange = (value) => {
     if (!selectedModel) return;
     upsertModel(selectedModel.name, (model) => {
@@ -1039,6 +1101,10 @@ export function useModelPricingEditorState({
         'billing_setting.billing_expr': {},
       };
 
+      const resolutionOutput = {
+        resolution_price_setting: {},
+      };
+
       for (const model of models) {
         if (model.billingMode === 'tiered_expr') {
           const finalBillingExpr = combineBillingExpr(
@@ -1048,6 +1114,21 @@ export function useModelPricingEditorState({
           if (finalBillingExpr) {
             tieredOutput['billing_setting.billing_mode'][model.name] = 'tiered_expr';
             tieredOutput['billing_setting.billing_expr'][model.name] = finalBillingExpr;
+          }
+        }
+
+        if (model.billingMode === 'per-resolution') {
+          tieredOutput['billing_setting.billing_mode'][model.name] = 'resolution';
+          if (hasValue(model.resolutionPrice)) {
+            try {
+              const parsed = JSON.parse(model.resolutionPrice);
+              resolutionOutput.resolution_price_setting[model.name] = parsed;
+            } catch {
+              const num = parseFloat(model.resolutionPrice);
+              if (!isNaN(num)) {
+                resolutionOutput.resolution_price_setting[model.name] = num;
+              }
+            }
           }
         }
 
@@ -1063,7 +1144,7 @@ export function useModelPricingEditorState({
             }
           });
         } catch (e) {
-          if (model.billingMode !== 'tiered_expr') {
+          if (model.billingMode !== 'tiered_expr' && model.billingMode !== 'per-resolution') {
             throw e;
           }
         }
@@ -1077,6 +1158,12 @@ export function useModelPricingEditorState({
           }),
         ),
         ...Object.entries(tieredOutput).map(([key, value]) =>
+          API.put('/api/option/', {
+            key,
+            value: JSON.stringify(value, null, 2),
+          }),
+        ),
+        ...Object.entries(resolutionOutput).map(([key, value]) =>
           API.put('/api/option/', {
             key,
             value: JSON.stringify(value, null, 2),
@@ -1122,6 +1209,7 @@ export function useModelPricingEditorState({
     isOptionalFieldEnabled,
     handleOptionalFieldToggle,
     handleNumericFieldChange,
+    handleFieldChange,
     handleBillingModeChange,
     handleBillingExprChange,
     handleRequestRuleExprChange,

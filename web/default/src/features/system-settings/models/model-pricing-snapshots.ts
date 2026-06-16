@@ -75,6 +75,7 @@ const ratioToPrice = (ratio?: string, denominator?: string) => {
 
 export const getModeLabel = (mode?: string) => {
   if (mode === 'per-request') return 'Per-request'
+  if (mode === 'per-resolution') return 'Per-resolution'
   if (mode === 'tiered_expr') return 'Expression'
   return 'Per-token'
 }
@@ -105,6 +106,9 @@ export const getPriceSummary = (
   if (row.billingMode === 'tiered_expr') {
     return getExpressionSummary(row, t)
   }
+  if (row.billingMode === 'per-resolution') {
+    return t('Per-resolution')
+  }
   if (row.billingMode === 'per-request') {
     return row.price ? `$${row.price} / ${t('request')}` : t('Unset price')
   }
@@ -134,6 +138,9 @@ export const getPriceDetail = (
     return row.requestRuleExpr
       ? t('Includes request rules')
       : t('Expression based')
+  }
+  if (row.billingMode === 'per-resolution') {
+    return t('Dynamic pricing by resolution')
   }
   if (row.billingMode === 'per-request') {
     return t('Fixed request price')

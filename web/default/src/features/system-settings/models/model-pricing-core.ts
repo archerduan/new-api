@@ -230,6 +230,17 @@ export function buildPreviewRows(
     ]
   }
 
+  if (mode === 'per-resolution') {
+    return [
+      { key: 'mode', label: 'BillingMode', value: 'resolution' },
+      {
+        key: 'resolutionPrice',
+        label: 'resolution_price_setting',
+        value: values.resolutionPrice || t('Empty'),
+      },
+    ]
+  }
+
   if (mode === 'per-request') {
     return [
       {
