@@ -140,15 +140,34 @@ const buildModelState = (name, sourceMaps) => {
   }
 
   if (billingMode === 'resolution') {
-    const resolutionPriceRaw = sourceMaps.ResolutionPrice?.[name];
-    let resolutionPrice = '';
-    if (resolutionPriceRaw !== undefined && resolutionPriceRaw !== null) {
-      if (typeof resolutionPriceRaw === 'object') {
-        resolutionPrice = JSON.stringify(resolutionPriceRaw);
-      } else {
-        resolutionPrice = String(resolutionPriceRaw);
+    // Extract resolution prices for this model from flat map
+    // Flat format: {"1K:dall-e-3": 0.792, "4K:dall-e-3": 1.418}
+    // Convert to: {"1K": 0.792, "4K": 1.418}
+    const modelResolutionPrices = {};
+    const resolutionPriceMap = sourceMaps.ResolutionPrice || {};
+
+    for (const key in resolutionPriceMap) {
+      if (key.includes(':')) {
+        const [resolution, modelPart] = key.split(':', 2);
+        if (modelPart === name || (modelPart.endsWith('*') && name.startsWith(modelPart.slice(0, -1)))) {
+          const priceValue = resolutionPriceMap[key];
+          if (typeof priceValue === 'number') {
+            modelResolutionPrices[resolution] = priceValue;
+          }
+        }
+      } else if (key === name) {
+        // Legacy format: direct model name as key
+        const priceValue = resolutionPriceMap[key];
+        if (typeof priceValue === 'object') {
+          Object.assign(modelResolutionPrices, priceValue);
+        }
       }
     }
+
+    const resolutionPrice = Object.keys(modelResolutionPrices).length > 0
+      ? JSON.stringify(modelResolutionPrices)
+      : '';
+
     return {
       ...EMPTY_MODEL,
       name,
@@ -1122,11 +1141,24 @@ export function useModelPricingEditorState({
           if (hasValue(model.resolutionPrice)) {
             try {
               const parsed = JSON.parse(model.resolutionPrice);
-              resolutionOutput.resolution_price_setting[model.name] = parsed;
+              // Convert model-specific resolution prices to flat format
+              // Input: {"1K": 0.792, "4K": 1.418}
+              // Output: {"1K:modelName": 0.792, "4K:modelName": 1.418}
+              if (typeof parsed === 'object' && !Array.isArray(parsed)) {
+                Object.entries(parsed).forEach(([resolution, price]) => {
+                  const key = `${resolution}:${model.name}`;
+                  if (typeof price === 'number') {
+                    resolutionOutput.resolution_price_setting[key] = price;
+                  }
+                });
+              } else if (typeof parsed === 'number') {
+                // Single default price for this model
+                resolutionOutput.resolution_price_setting[`default:${model.name}`] = parsed;
+              }
             } catch {
               const num = parseFloat(model.resolutionPrice);
               if (!isNaN(num)) {
-                resolutionOutput.resolution_price_setting[model.name] = num;
+                resolutionOutput.resolution_price_setting[`default:${model.name}`] = num;
               }
             }
           }

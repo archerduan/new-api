@@ -270,15 +270,32 @@ export const buildModelSnapshots = ({
     }
 
     if (modeForModel === 'resolution') {
-      const resPrice = resolutionPriceMap[name]
-      let resPriceStr = ''
-      if (resPrice !== undefined && resPrice !== null) {
-        if (typeof resPrice === 'object') {
-          resPriceStr = JSON.stringify(resPrice)
-        } else {
-          resPriceStr = String(resPrice)
+      // Extract resolution prices for this model from flat map
+      // Flat format: {"1K:dall-e-3": 0.792, "4K:dall-e-3": 1.418}
+      // Convert to: {"1K": 0.792, "4K": 1.418}
+      const modelResolutionPrices: Record<string, number> = {}
+      for (const key in resolutionPriceMap) {
+        if (key.includes(':')) {
+          const [resolution, modelPart] = key.split(':', 2)
+          if (modelPart === name || (modelPart.endsWith('*') && name.startsWith(modelPart.slice(0, -1)))) {
+            const priceValue = resolutionPriceMap[key]
+            if (typeof priceValue === 'number') {
+              modelResolutionPrices[resolution] = priceValue
+            }
+          }
+        } else if (key === name) {
+          // Legacy format: direct model name as key
+          const priceValue = resolutionPriceMap[key]
+          if (typeof priceValue === 'object') {
+            Object.assign(modelResolutionPrices, priceValue)
+          }
         }
       }
+
+      const resPriceStr = Object.keys(modelResolutionPrices).length > 0
+        ? JSON.stringify(modelResolutionPrices)
+        : ''
+
       return {
         name,
         billingMode: 'per-resolution',

@@ -513,7 +513,17 @@ const ModelRatioVisualEditorComponent = forwardRef<
         delete audioCompletionMap[name]
         delete billingModeMap[name]
         delete billingExprMap[name]
+        // Delete legacy format
         delete resolutionPriceMap[name]
+        // Delete all resolution:model entries for this model
+        Object.keys(resolutionPriceMap).forEach((key) => {
+          if (key.includes(':')) {
+            const modelPart = key.split(':', 2)[1]
+            if (modelPart === name) {
+              delete resolutionPriceMap[key]
+            }
+          }
+        })
 
         if (data.billingMode === 'tiered_expr') {
           const combined = combineBillingExpr(
@@ -541,11 +551,24 @@ const ModelRatioVisualEditorComponent = forwardRef<
           if (data.resolutionPrice && data.resolutionPrice !== '') {
             try {
               const parsed = JSON.parse(data.resolutionPrice)
-              resolutionPriceMap[name] = parsed
+              // Convert model-specific resolution prices to flat format
+              // Input: {"1K": 0.792, "4K": 1.418}
+              // Output: {"1K:modelName": 0.792, "4K:modelName": 1.418}
+              if (typeof parsed === 'object' && !Array.isArray(parsed)) {
+                Object.entries(parsed).forEach(([resolution, price]) => {
+                  const key = `${resolution}:${name}`
+                  if (typeof price === 'number') {
+                    resolutionPriceMap[key] = price
+                  }
+                })
+              } else if (typeof parsed === 'number') {
+                // Single default price for this model
+                resolutionPriceMap[`default:${name}`] = parsed
+              }
             } catch {
               const num = parseFloat(data.resolutionPrice)
               if (Number.isFinite(num)) {
-                resolutionPriceMap[name] = num
+                resolutionPriceMap[`default:${name}`] = num
               }
             }
           }
