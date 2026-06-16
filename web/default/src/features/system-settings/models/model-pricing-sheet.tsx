@@ -80,6 +80,7 @@ import {
 import { PriceInput, PriceLane } from './model-pricing-inputs'
 import { formatPricingNumber } from './pricing-format'
 import { TieredPricingEditor } from './tiered-pricing-editor'
+import { ResolutionPriceTable } from './resolution-price-table'
 
 export type { ModelRatioData } from './model-pricing-core'
 
@@ -601,34 +602,11 @@ export const ModelPricingEditorPanel = forwardRef<
                         name='price'
                         render={({ field }) => (
                           <FormItem className='contents'>
-                            <Field>
-                              <FieldLabel>{t('Fixed price')}</FieldLabel>
-                              <FormControl>
-                                <InputGroup>
-                                  <InputGroupAddon>$</InputGroupAddon>
-                                  <InputGroupInput
-                                    inputMode='decimal'
-                                    placeholder='0.01'
-                                    {...field}
-                                    onChange={(event) => {
-                                      const value = event.target.value
-                                      if (numericDraftRegex.test(value)) {
-                                        field.onChange(value)
-                                      }
-                                    }}
-                                  />
-                                  <InputGroupAddon align='inline-end'>
-                                    {t('per request')}
-                                  </InputGroupAddon>
-                                </InputGroup>
-                              </FormControl>
-                              <FieldDescription>
-                                {t(
-                                  'Cost in USD per request, regardless of tokens used.'
-                                )}
-                              </FieldDescription>
-                              <FormMessage />
-                            </Field>
+                            <ResolutionPriceTable
+                              value={field.value || ''}
+                              onChange={field.onChange}
+                              disabled={false}
+                            />
                           </FormItem>
                         )}
                       />
