@@ -31,13 +31,11 @@ export type ModelPricingSnapshotInput = {
   audioCompletionRatio: string
   billingMode: string
   billingExpr: string
-  resolutionPrice: string
 }
 
 export type ModelPricingSnapshot = {
   name: string
   price?: string
-  resolutionPrice?: string
   ratio?: string
   cacheRatio?: string
   createCacheRatio?: string
@@ -77,7 +75,7 @@ const ratioToPrice = (ratio?: string, denominator?: string) => {
 
 export const getModeLabel = (mode?: string) => {
   if (mode === 'per-request') return 'Per-request'
-  if (mode === 'per-resolution') return 'Per-resolution'
+  if (mode === 'per-request') return 'Per-request'
   if (mode === 'tiered_expr') return 'Expression'
   return 'Per-token'
 }
@@ -108,14 +106,7 @@ export const getPriceSummary = (
   if (row.billingMode === 'tiered_expr') {
     return getExpressionSummary(row, t)
   }
-  if (row.billingMode === 'per-resolution') {
-    return t('Per-resolution')
-  }
   if (row.billingMode === 'per-request') {
-    // Check if this model has resolution-based pricing
-    if (row.resolutionPrice && row.resolutionPrice !== '') {
-      return t('Per-request (resolution-based)')
-    }
     return row.price ? `$${row.price} / ${t('request')}` : t('Unset price')
   }
 
@@ -145,14 +136,7 @@ export const getPriceDetail = (
       ? t('Includes request rules')
       : t('Expression based')
   }
-  if (row.billingMode === 'per-resolution') {
-    return t('Dynamic pricing by resolution')
-  }
   if (row.billingMode === 'per-request') {
-    // Check if this model has resolution-based pricing
-    if (row.resolutionPrice && row.resolutionPrice !== '') {
-      return t('Dynamic pricing by resolution')
-    }
     return t('Fixed request price')
   }
 
@@ -184,7 +168,6 @@ export const buildModelSnapshots = ({
   audioCompletionRatio,
   billingMode,
   billingExpr,
-  resolutionPrice,
 }: ModelPricingSnapshotInput): ModelPricingSnapshot[] => {
   const priceMap = safeJsonParse<Record<string, number>>(modelPrice, {
     fallback: {},
@@ -226,10 +209,6 @@ export const buildModelSnapshots = ({
     fallback: {},
     context: 'billing expression',
   })
-  const resolutionPriceMap = safeJsonParse<Record<string, unknown>>(resolutionPrice, {
-    fallback: {},
-    context: 'resolution price',
-  })
 
   const modelNames = new Set([
     ...Object.keys(priceMap),
@@ -242,7 +221,6 @@ export const buildModelSnapshots = ({
     ...Object.keys(audioCompletionMap),
     ...Object.keys(billingModeMap),
     ...Object.keys(billingExprMap),
-    ...Object.keys(resolutionPriceMap),
   ])
 
   return Array.from(modelNames).map((name) => {
@@ -255,32 +233,6 @@ export const buildModelSnapshots = ({
     const audio = audioMap[name]?.toString() || ''
     const audioCompletion = audioCompletionMap[name]?.toString() || ''
 
-    // Extract resolution prices for this model from flat format
-    // Flat format: {"1K:dall-e-3": 0.792, "4K:dall-e-3": 1.418}
-    // Convert to: {"1K": 0.792, "4K": 1.418}
-    const modelResolutionPrices: Record<string, number> = {}
-    for (const key in resolutionPriceMap) {
-      if (key.includes(':')) {
-        const [resolution, modelPart] = key.split(':', 2)
-        if (modelPart === name || (modelPart.endsWith('*') && name.startsWith(modelPart.slice(0, -1)))) {
-          const priceValue = resolutionPriceMap[key]
-          if (typeof priceValue === 'number') {
-            modelResolutionPrices[resolution] = priceValue
-          }
-        }
-      } else if (key === name) {
-        // Legacy format: direct model name as key
-        const priceValue = resolutionPriceMap[key]
-        if (typeof priceValue === 'object') {
-          Object.assign(modelResolutionPrices, priceValue)
-        }
-      }
-    }
-
-    const resolutionPrice = Object.keys(modelResolutionPrices).length > 0
-      ? JSON.stringify(modelResolutionPrices)
-      : ''
-
     const modeForModel = billingModeMap[name]
     if (modeForModel === 'tiered_expr') {
       const fullExpr = billingExprMap[name] || ''
@@ -291,25 +243,6 @@ export const buildModelSnapshots = ({
         billingMode: 'tiered_expr',
         billingExpr: pureExpr,
         requestRuleExpr,
-        price,
-        resolutionPrice,
-        ratio,
-        cacheRatio: cache,
-        createCacheRatio: createCache,
-        completionRatio: completion,
-        imageRatio: image,
-        audioRatio: audio,
-        audioCompletionRatio: audioCompletion,
-        hasConflict: false,
-      }
-    }
-
-    // Legacy: standalone resolution mode (treat as per-request with resolution pricing)
-    if (modeForModel === 'resolution') {
-      return {
-        name,
-        billingMode: 'per-request',
-        resolutionPrice,
         price,
         ratio,
         cacheRatio: cache,
@@ -325,7 +258,6 @@ export const buildModelSnapshots = ({
     return {
       name,
       price,
-      resolutionPrice,
       ratio,
       cacheRatio: cache,
       createCacheRatio: createCache,
@@ -333,7 +265,7 @@ export const buildModelSnapshots = ({
       imageRatio: image,
       audioRatio: audio,
       audioCompletionRatio: audioCompletion,
-      billingMode: price !== '' || resolutionPrice !== '' ? 'per-request' : 'per-token',
+      billingMode: price !== '' ? 'per-request' : 'per-token',
       hasConflict:
         price !== '' &&
         (ratio !== '' ||
@@ -351,7 +283,6 @@ export const getSnapshotSignature = (snapshot?: ModelPricingSnapshot) => {
   if (!snapshot) return ''
   return JSON.stringify({
     price: snapshot.price || '',
-    resolutionPrice: snapshot.resolutionPrice || '',
     ratio: snapshot.ratio || '',
     cacheRatio: snapshot.cacheRatio || '',
     createCacheRatio: snapshot.createCacheRatio || '',

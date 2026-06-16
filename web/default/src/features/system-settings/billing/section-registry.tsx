@@ -26,29 +26,29 @@ import type { BillingSettings } from '../types'
 import { createSectionRegistry } from '../utils/section-registry'
 
 const getModelDefaults = (settings: BillingSettings) => ({
-  ModelPrice: settings.ModelPrice,
-  ModelRatio: settings.ModelRatio,
-  CacheRatio: settings.CacheRatio,
-  CreateCacheRatio: settings.CreateCacheRatio,
-  CompletionRatio: settings.CompletionRatio,
-  ImageRatio: settings.ImageRatio,
-  AudioRatio: settings.AudioRatio,
-  AudioCompletionRatio: settings.AudioCompletionRatio,
-  ExposeRatioEnabled: settings.ExposeRatioEnabled,
-  BillingMode: settings['billing_setting.billing_mode'],
-  BillingExpr: settings['billing_setting.billing_expr'],
-  ResolutionPrice: settings.resolution_price_setting || '{}',
+  ModelPrice: settings.ModelPrice ?? '',
+  ModelRatio: settings.ModelRatio ?? '',
+  CacheRatio: settings.CacheRatio ?? '',
+  CreateCacheRatio: settings.CreateCacheRatio ?? '',
+  CompletionRatio: settings.CompletionRatio ?? '',
+  ImageRatio: settings.ImageRatio ?? '',
+  AudioRatio: settings.AudioRatio ?? '',
+  AudioCompletionRatio: settings.AudioCompletionRatio ?? '',
+  ExposeRatioEnabled: settings.ExposeRatioEnabled ?? false,
+  BillingMode: settings['billing_setting.billing_mode'] ?? '{}',
+  BillingExpr: settings['billing_setting.billing_expr'] ?? '{}',
+  ResolutionPrice: settings['billing_setting.resolution_price'] ?? '{}',
 })
 
 const getGroupDefaults = (settings: BillingSettings) => ({
-  TopupGroupRatio: settings.TopupGroupRatio,
-  GroupRatio: settings.GroupRatio,
-  UserUsableGroups: settings.UserUsableGroups,
-  GroupGroupRatio: settings.GroupGroupRatio,
-  AutoGroups: settings.AutoGroups,
-  DefaultUseAutoGroup: settings.DefaultUseAutoGroup,
+  TopupGroupRatio: settings.TopupGroupRatio ?? '',
+  GroupRatio: settings.GroupRatio ?? '',
+  UserUsableGroups: settings.UserUsableGroups ?? '',
+  GroupGroupRatio: settings.GroupGroupRatio ?? '',
+  AutoGroups: settings.AutoGroups ?? '',
+  DefaultUseAutoGroup: settings.DefaultUseAutoGroup ?? false,
   GroupSpecialUsableGroup:
-    settings['group_ratio_setting.group_special_usable_group'],
+    settings['group_ratio_setting.group_special_usable_group'] ?? '{}',
 })
 
 const BILLING_SECTIONS = [
@@ -109,8 +109,7 @@ const BILLING_SECTIONS = [
         titleKey='Model Pricing'
         modelDefaults={getModelDefaults(settings)}
         groupDefaults={getGroupDefaults(settings)}
-        toolPricesDefault={settings['tool_price_setting.prices']}
-        resolutionPricesDefault={settings.resolution_price_setting || '{}'}
+        toolPricesDefault={settings['tool_price_setting.prices'] ?? '{}'}
         visibleTabs={['models', 'tool-prices', 'unset-models', 'upstream-sync']}
       />
     ),
@@ -123,8 +122,7 @@ const BILLING_SECTIONS = [
         titleKey='Group Pricing'
         modelDefaults={getModelDefaults(settings)}
         groupDefaults={getGroupDefaults(settings)}
-        toolPricesDefault={settings['tool_price_setting.prices']}
-        resolutionPricesDefault={settings.resolution_price_setting || '{}'}
+        toolPricesDefault={settings['tool_price_setting.prices'] ?? '{}'}
         visibleTabs={['groups']}
       />
     ),

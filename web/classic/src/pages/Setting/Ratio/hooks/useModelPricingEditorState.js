@@ -31,7 +31,6 @@ const EMPTY_MODEL = {
   name: '',
   billingMode: 'per-token',
   fixedPrice: '',
-  resolutionPrice: '',
   inputPrice: '',
   completionPrice: '',
   lockedCompletionRatio: '',
@@ -139,43 +138,6 @@ const buildModelState = (name, sourceMaps) => {
     };
   }
 
-  // Extract resolution prices for this model from flat format
-  const extractResolutionPrices = (name, resolutionPriceMap) => {
-    const modelResolutionPrices = {};
-    for (const key in resolutionPriceMap) {
-      if (key.includes(':')) {
-        const [resolution, modelPart] = key.split(':', 2);
-        if (modelPart === name || (modelPart.endsWith('*') && name.startsWith(modelPart.slice(0, -1)))) {
-          const priceValue = resolutionPriceMap[key];
-          if (typeof priceValue === 'number') {
-            modelResolutionPrices[resolution] = priceValue;
-          }
-        }
-      } else if (key === name) {
-        // Legacy format: direct model name as key
-        const priceValue = resolutionPriceMap[key];
-        if (typeof priceValue === 'object') {
-          Object.assign(modelResolutionPrices, priceValue);
-        }
-      }
-    }
-    return Object.keys(modelResolutionPrices).length > 0
-      ? JSON.stringify(modelResolutionPrices)
-      : '';
-  };
-
-  if (billingMode === 'resolution') {
-    const resolutionPrice = extractResolutionPrices(name, sourceMaps.ResolutionPrice || {});
-    return {
-      ...EMPTY_MODEL,
-      name,
-      billingMode: 'per-resolution',
-      resolutionPrice,
-      rawRatios: { ...EMPTY_MODEL.rawRatios },
-      hasConflict: false,
-    };
-  }
-
   const modelRatio = toNumericString(sourceMaps.ModelRatio[name]);
   const completionRatio = toNumericString(sourceMaps.CompletionRatio[name]);
   const completionRatioMeta = normalizeCompletionRatioMeta(
@@ -189,7 +151,6 @@ const buildModelState = (name, sourceMaps) => {
     sourceMaps.AudioCompletionRatio[name],
   );
   const fixedPrice = toNumericString(sourceMaps.ModelPrice[name]);
-  const resolutionPrice = extractResolutionPrices(name, sourceMaps.ResolutionPrice || {});
   const inputPrice = ratioToBasePrice(modelRatio);
   const inputPriceNumber = toNumberOrNull(inputPrice);
   const audioInputPrice =
@@ -202,7 +163,6 @@ const buildModelState = (name, sourceMaps) => {
     name,
     billingMode: hasValue(fixedPrice) ? 'per-request' : 'per-token',
     fixedPrice,
-    resolutionPrice,
     inputPrice,
     completionRatioLocked: completionRatioMeta.locked,
     lockedCompletionRatio: completionRatioMeta.ratio,
@@ -341,21 +301,6 @@ export const buildSummaryText = (model, t) => {
       return `${t('表达式计费')}${requestRuleSuffix}`;
     }
     return `${t('阶梯计费')} (${tierCount} ${t('档')})${requestRuleSuffix}`;
-  }
-
-  if (model.billingMode === 'per-resolution') {
-    if (!hasValue(model.resolutionPrice)) {
-      return `${t('按分辨率')}${requestRuleSuffix}`;
-    }
-    try {
-      const parsed = JSON.parse(model.resolutionPrice);
-      if (typeof parsed === 'object' && parsed !== null) {
-        const keys = Object.keys(parsed);
-        const count = keys.length;
-        return `${t('按分辨率')} (${count} ${t('档')})${requestRuleSuffix}`;
-      }
-    } catch {}
-    return `${t('按分辨率')}${requestRuleSuffix}`;
   }
 
   if (model.billingMode === 'per-request' && hasValue(model.fixedPrice)) {
@@ -542,22 +487,6 @@ export const buildPreviewRows = (model, t) => {
     return rows;
   }
 
-  if (model.billingMode === 'per-resolution') {
-    const rows = [
-      {
-        key: 'BillingMode',
-        label: 'ModelBillingMode',
-        value: 'resolution',
-      },
-      {
-        key: 'ResolutionPrice',
-        label: 'resolution_price_setting',
-        value: hasValue(model.resolutionPrice) ? model.resolutionPrice : t('空'),
-      },
-    ];
-    return rows;
-  }
-
   if (model.billingMode === 'per-request') {
     const rows = [
       {
@@ -719,7 +648,6 @@ export function useModelPricingEditorState({
       AudioCompletionRatio: parseOptionJSON(options.AudioCompletionRatio),
       ModelBillingMode: parseOptionJSON(options['billing_setting.billing_mode']),
       ModelBillingExpr: parseOptionJSON(options['billing_setting.billing_expr']),
-      ResolutionPrice: parseOptionJSON(options.resolution_price_setting),
     };
 
     const names = new Set([
@@ -735,7 +663,6 @@ export function useModelPricingEditorState({
       ...Object.keys(sourceMaps.AudioCompletionRatio),
       ...Object.keys(sourceMaps.ModelBillingMode),
       ...Object.keys(sourceMaps.ModelBillingExpr),
-      ...Object.keys(sourceMaps.ResolutionPrice),
     ]);
 
     const nextModels = Array.from(names)
@@ -945,14 +872,6 @@ export function useModelPricingEditorState({
     });
   };
 
-  const handleFieldChange = (field, value) => {
-    if (!selectedModel) return;
-    upsertModel(selectedModel.name, (model) => ({
-      ...model,
-      [field]: value,
-    }));
-  };
-
   const handleBillingModeChange = (value) => {
     if (!selectedModel) return;
     upsertModel(selectedModel.name, (model) => {
@@ -1120,10 +1039,6 @@ export function useModelPricingEditorState({
         'billing_setting.billing_expr': {},
       };
 
-      const resolutionOutput = {
-        resolution_price_setting: {},
-      };
-
       for (const model of models) {
         if (model.billingMode === 'tiered_expr') {
           const finalBillingExpr = combineBillingExpr(
@@ -1133,45 +1048,6 @@ export function useModelPricingEditorState({
           if (finalBillingExpr) {
             tieredOutput['billing_setting.billing_mode'][model.name] = 'tiered_expr';
             tieredOutput['billing_setting.billing_expr'][model.name] = finalBillingExpr;
-          }
-        }
-
-        if (model.billingMode === 'per-resolution') {
-          tieredOutput['billing_setting.billing_mode'][model.name] = 'resolution';
-          if (hasValue(model.resolutionPrice)) {
-            try {
-              const parsed = JSON.parse(model.resolutionPrice);
-              // Convert model-specific resolution prices to flat format
-              // Input: {"1K": 0.792, "4K": 1.418}
-              // Output: {"1K:modelName": 0.792, "4K:modelName": 1.418}
-              if (typeof parsed === 'object' && !Array.isArray(parsed)) {
-                Object.entries(parsed).forEach(([resolution, price]) => {
-                  const key = `${resolution}:${model.name}`;
-                  if (typeof price === 'number') {
-                    resolutionOutput.resolution_price_setting[key] = price;
-                  }
-                });
-              }
-            } catch {
-              // Ignore invalid JSON
-            }
-          }
-        }
-
-        // Per-request mode: also save resolution prices if configured
-        if (model.billingMode === 'per-request' && hasValue(model.resolutionPrice)) {
-          try {
-            const parsed = JSON.parse(model.resolutionPrice);
-            if (typeof parsed === 'object' && !Array.isArray(parsed)) {
-              Object.entries(parsed).forEach(([resolution, price]) => {
-                const key = `${resolution}:${model.name}`;
-                if (typeof price === 'number') {
-                  resolutionOutput.resolution_price_setting[key] = price;
-                }
-              });
-            }
-          } catch {
-            // Ignore invalid JSON
           }
         }
 
@@ -1187,7 +1063,7 @@ export function useModelPricingEditorState({
             }
           });
         } catch (e) {
-          if (model.billingMode !== 'tiered_expr' && model.billingMode !== 'per-resolution' && model.billingMode !== 'per-request') {
+          if (model.billingMode !== 'tiered_expr') {
             throw e;
           }
         }
@@ -1201,12 +1077,6 @@ export function useModelPricingEditorState({
           }),
         ),
         ...Object.entries(tieredOutput).map(([key, value]) =>
-          API.put('/api/option/', {
-            key,
-            value: JSON.stringify(value, null, 2),
-          }),
-        ),
-        ...Object.entries(resolutionOutput).map(([key, value]) =>
           API.put('/api/option/', {
             key,
             value: JSON.stringify(value, null, 2),
@@ -1252,7 +1122,6 @@ export function useModelPricingEditorState({
     isOptionalFieldEnabled,
     handleOptionalFieldToggle,
     handleNumericFieldChange,
-    handleFieldChange,
     handleBillingModeChange,
     handleBillingExprChange,
     handleRequestRuleExprChange,

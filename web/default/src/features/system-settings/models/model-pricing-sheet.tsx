@@ -80,7 +80,6 @@ import {
 import { PriceInput, PriceLane } from './model-pricing-inputs'
 import { formatPricingNumber } from './pricing-format'
 import { TieredPricingEditor } from './tiered-pricing-editor'
-import { ResolutionPriceTable } from './resolution-price-table'
 
 export type { ModelRatioData } from './model-pricing-core'
 
@@ -161,7 +160,6 @@ export const ModelPricingEditorPanel = forwardRef<
     defaultValues: {
       name: '',
       price: '',
-      resolutionPrice: '',
       ratio: '',
       cacheRatio: '',
       createCacheRatio: '',
@@ -179,7 +177,6 @@ export const ModelPricingEditorPanel = forwardRef<
       form.reset({
         name: editData.name,
         price: editData.price || '',
-        resolutionPrice: editData.resolutionPrice || '',
         ratio: editData.ratio || '',
         cacheRatio: editData.cacheRatio || '',
         createCacheRatio: editData.createCacheRatio || '',
@@ -191,11 +188,9 @@ export const ModelPricingEditorPanel = forwardRef<
       setPricingMode(
         editData.billingMode === 'tiered_expr'
           ? 'tiered_expr'
-          : editData.billingMode === 'per-resolution'
-            ? 'per-resolution'
-            : editData.price
-              ? 'per-request'
-              : 'per-token'
+          : editData.price
+            ? 'per-request'
+            : 'per-token'
       )
       setBillingExpr(editData.billingExpr || '')
       setRequestRuleExpr(editData.requestRuleExpr || '')
@@ -203,7 +198,6 @@ export const ModelPricingEditorPanel = forwardRef<
       form.reset({
         name: '',
         price: '',
-        resolutionPrice: '',
         ratio: '',
         cacheRatio: '',
         createCacheRatio: '',
@@ -443,10 +437,9 @@ export const ModelPricingEditorPanel = forwardRef<
   const buildSubmitData = useCallback(
     (values: ModelPricingFormValues) => {
       const data: ModelRatioData = {
-        name: values.name.trim(),
+        name: (values.name || '').trim(),
         billingMode: pricingMode,
         price: values.price || '',
-        resolutionPrice: values.resolutionPrice || '',
         ratio: values.ratio || '',
         cacheRatio: values.cacheRatio || '',
         createCacheRatio: values.createCacheRatio || '',
@@ -639,22 +632,6 @@ export const ModelPricingEditorPanel = forwardRef<
                           </FormItem>
                         )}
                       />
-
-                      <div className='border-t pt-5'>
-                        <FormField
-                          control={form.control}
-                          name='resolutionPrice'
-                          render={({ field }) => (
-                            <FormItem className='contents'>
-                              <ResolutionPriceTable
-                                value={field.value || ''}
-                                onChange={field.onChange}
-                                disabled={false}
-                              />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
                     </FieldGroup>
                   </TabsContent>
 

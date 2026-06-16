@@ -50,7 +50,6 @@ import {
 } from '../hooks/useModelPricingEditorState';
 import { useIsMobile } from '../../../../hooks/common/useIsMobile';
 import TieredPricingEditor from './TieredPricingEditor';
-import ResolutionPriceTable from './ResolutionPriceTable';
 
 const { Text } = Typography;
 const EMPTY_CANDIDATE_MODEL_NAMES = [];
@@ -442,26 +441,13 @@ export default function ModelPricingEditor({
                 ) : null}
 
                 {selectedModel.billingMode === 'per-request' ? (
-                  <>
-                    <PriceInput
-                      label={t('固定价格')}
-                      value={selectedModel.fixedPrice}
-                      placeholder={t('输入每次调用价格')}
-                      suffix={t('$/次')}
-                      onChange={(value) => handleNumericFieldChange('fixedPrice', value)}
-                      extraText={t('适合按固定价格计费。留空以使用下方按分辨率定价。')}
-                    />
-                    <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--semi-color-border)' }}>
-                      <ResolutionPriceTable
-                        value={selectedModel.resolutionPrice || ''}
-                        onChange={(value) => handleFieldChange('resolutionPrice', value)}
-                      />
-                    </div>
-                  </>
-                ) : selectedModel.billingMode === 'per-resolution' ? (
-                  <ResolutionPriceTable
-                    value={selectedModel.resolutionPrice || ''}
-                    onChange={(value) => handleFieldChange('resolutionPrice', value)}
+                  <PriceInput
+                    label={t('固定价格')}
+                    value={selectedModel.fixedPrice}
+                    placeholder={t('输入每次调用价格')}
+                    suffix={t('$/次')}
+                    onChange={(value) => handleNumericFieldChange('fixedPrice', value)}
+                    extraText={t('适合 MJ / 任务类等按次收费模型。')}
                   />
                 ) : selectedModel.billingMode === 'tiered_expr' ? (
                   <TieredPricingEditor

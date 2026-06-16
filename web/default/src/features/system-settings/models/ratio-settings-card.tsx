@@ -32,7 +32,6 @@ import { useUpdateOption } from '../hooks/use-update-option'
 import { GroupRatioForm } from './group-ratio-form'
 import { ModelRatioForm } from './model-ratio-form'
 import { ToolPriceSettings } from './tool-price-settings'
-import { ResolutionPriceSettings } from './resolution-price-settings'
 import { UpstreamRatioSync } from './upstream-ratio-sync'
 import { UnsetPricingModels } from './unset-pricing-models'
 import {
@@ -131,13 +130,12 @@ const createGroupSchema = (t: Translate) =>
 
 type ModelFormValues = z.infer<ReturnType<typeof createModelSchema>>
 type GroupFormValues = z.infer<ReturnType<typeof createGroupSchema>>
-type RatioTabId = 'models' | 'groups' | 'tool-prices' | 'resolution-prices' | 'upstream-sync' | 'unset-models'
+type RatioTabId = 'models' | 'groups' | 'tool-prices' | 'upstream-sync' | 'unset-models'
 
 type RatioSettingsCardProps = {
   modelDefaults: ModelFormValues
   groupDefaults: GroupFormValues
   toolPricesDefault: string
-  resolutionPricesDefault: string
   titleKey?: string
   visibleTabs?: RatioTabId[]
 }
@@ -146,9 +144,8 @@ export function RatioSettingsCard({
   modelDefaults,
   groupDefaults,
   toolPricesDefault,
-  resolutionPricesDefault,
   titleKey = 'Pricing Ratios',
-  visibleTabs = ['models', 'groups', 'tool-prices', 'resolution-prices', 'unset-models', 'upstream-sync'],
+  visibleTabs = ['models', 'groups', 'tool-prices', 'unset-models', 'upstream-sync'],
 }: RatioSettingsCardProps) {
   const { t } = useTranslation()
   const updateOption = useUpdateOption()
@@ -222,6 +219,7 @@ export function RatioSettingsCard({
       ),
       BillingMode: formatJsonForTextarea(modelDefaults.BillingMode),
       BillingExpr: formatJsonForTextarea(modelDefaults.BillingExpr),
+      ResolutionPrice: formatJsonForTextarea(modelDefaults.ResolutionPrice),
     },
   })
 
@@ -256,6 +254,7 @@ export function RatioSettingsCard({
       ExposeRatioEnabled: modelDefaults.ExposeRatioEnabled,
       BillingMode: normalizeJsonString(modelDefaults.BillingMode),
       BillingExpr: normalizeJsonString(modelDefaults.BillingExpr),
+      ResolutionPrice: normalizeJsonString(modelDefaults.ResolutionPrice),
     }
     setSavedModelValues(modelNormalizedDefaults.current)
 
@@ -273,6 +272,7 @@ export function RatioSettingsCard({
       ),
       BillingMode: formatJsonForTextarea(modelDefaults.BillingMode),
       BillingExpr: formatJsonForTextarea(modelDefaults.BillingExpr),
+      ResolutionPrice: formatJsonForTextarea(modelDefaults.ResolutionPrice),
     })
   }, [modelDefaults, modelForm])
 
@@ -316,11 +316,13 @@ export function RatioSettingsCard({
         ExposeRatioEnabled: values.ExposeRatioEnabled,
         BillingMode: normalizeJsonString(values.BillingMode),
         BillingExpr: normalizeJsonString(values.BillingExpr),
+        ResolutionPrice: normalizeJsonString(values.ResolutionPrice),
       }
 
       const apiKeyMap: Record<string, string> = {
         BillingMode: 'billing_setting.billing_mode',
         BillingExpr: 'billing_setting.billing_expr',
+        ResolutionPrice: 'billing_setting.resolution_price',
       }
 
       const updates = (
@@ -392,7 +394,6 @@ export function RatioSettingsCard({
     models: 'Model prices',
     groups: 'Group ratios',
     'tool-prices': 'Tool prices',
-    'resolution-prices': 'Resolution prices',
     'upstream-sync': 'Upstream price sync',
     'unset-models': 'Unset pricing models',
   }
@@ -431,9 +432,6 @@ export function RatioSettingsCard({
     }
     if (tab === 'tool-prices') {
       return <ToolPriceSettings defaultValue={toolPricesDefault} />
-    }
-    if (tab === 'resolution-prices') {
-      return <ResolutionPriceSettings defaultValue={resolutionPricesDefault} />
     }
     if (tab === 'unset-models') {
       return (
