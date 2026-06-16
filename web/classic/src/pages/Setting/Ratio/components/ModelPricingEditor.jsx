@@ -50,6 +50,7 @@ import {
 } from '../hooks/useModelPricingEditorState';
 import { useIsMobile } from '../../../../hooks/common/useIsMobile';
 import TieredPricingEditor from './TieredPricingEditor';
+import ResolutionPriceTable from './ResolutionPriceTable';
 
 const { Text } = Typography;
 const EMPTY_CANDIDATE_MODEL_NAMES = [];
@@ -414,6 +415,7 @@ export default function ModelPricingEditor({
                   >
                     <Radio value='per-token'>{t('按量计费')}</Radio>
                     <Radio value='per-request'>{t('按次计费')}</Radio>
+                    <Radio value='per-resolution'>{t('按分辨率')}</Radio>
                     <Radio value='tiered_expr'>{t('表达式/阶梯计费')}</Radio>
                   </RadioGroup>
                   <div className='mt-2 text-xs text-gray-500'>
@@ -448,6 +450,11 @@ export default function ModelPricingEditor({
                     suffix={t('$/次')}
                     onChange={(value) => handleNumericFieldChange('fixedPrice', value)}
                     extraText={t('适合 MJ / 任务类等按次收费模型。')}
+                  />
+                ) : selectedModel.billingMode === 'per-resolution' ? (
+                  <ResolutionPriceTable
+                    value={selectedModel.resolutionPrice || ''}
+                    onChange={(value) => handleFieldChange('resolutionPrice', value)}
                   />
                 ) : selectedModel.billingMode === 'tiered_expr' ? (
                   <TieredPricingEditor

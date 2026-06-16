@@ -161,6 +161,7 @@ export const ModelPricingEditorPanel = forwardRef<
     defaultValues: {
       name: '',
       price: '',
+      resolutionPrice: '',
       ratio: '',
       cacheRatio: '',
       createCacheRatio: '',
@@ -178,6 +179,7 @@ export const ModelPricingEditorPanel = forwardRef<
       form.reset({
         name: editData.name,
         price: editData.price || '',
+        resolutionPrice: editData.resolutionPrice || '',
         ratio: editData.ratio || '',
         cacheRatio: editData.cacheRatio || '',
         createCacheRatio: editData.createCacheRatio || '',
@@ -189,9 +191,11 @@ export const ModelPricingEditorPanel = forwardRef<
       setPricingMode(
         editData.billingMode === 'tiered_expr'
           ? 'tiered_expr'
-          : editData.price
-            ? 'per-request'
-            : 'per-token'
+          : editData.billingMode === 'per-resolution'
+            ? 'per-resolution'
+            : editData.price
+              ? 'per-request'
+              : 'per-token'
       )
       setBillingExpr(editData.billingExpr || '')
       setRequestRuleExpr(editData.requestRuleExpr || '')
@@ -199,6 +203,7 @@ export const ModelPricingEditorPanel = forwardRef<
       form.reset({
         name: '',
         price: '',
+        resolutionPrice: '',
         ratio: '',
         cacheRatio: '',
         createCacheRatio: '',
@@ -441,6 +446,7 @@ export const ModelPricingEditorPanel = forwardRef<
         name: values.name.trim(),
         billingMode: pricingMode,
         price: values.price || '',
+        resolutionPrice: values.resolutionPrice || '',
         ratio: values.ratio || '',
         cacheRatio: values.cacheRatio || '',
         createCacheRatio: values.createCacheRatio || '',
@@ -541,12 +547,15 @@ export const ModelPricingEditorPanel = forwardRef<
                   onValueChange={handleModeChange}
                   className='gap-4'
                 >
-                  <TabsList className='grid w-full grid-cols-3'>
+                  <TabsList className='grid w-full grid-cols-4'>
                     <TabsTrigger value='per-token'>
                       {t('Per-token')}
                     </TabsTrigger>
                     <TabsTrigger value='per-request'>
                       {t('Per-request')}
+                    </TabsTrigger>
+                    <TabsTrigger value='per-resolution'>
+                      {t('Per-resolution')}
                     </TabsTrigger>
                     <TabsTrigger value='tiered_expr'>
                       {t('Expression')}
@@ -600,6 +609,47 @@ export const ModelPricingEditorPanel = forwardRef<
                       <FormField
                         control={form.control}
                         name='price'
+                        render={({ field }) => (
+                          <FormItem className='contents'>
+                            <Field>
+                              <FieldLabel>{t('Fixed price')}</FieldLabel>
+                              <FormControl>
+                                <InputGroup>
+                                  <InputGroupAddon>$</InputGroupAddon>
+                                  <InputGroupInput
+                                    inputMode='decimal'
+                                    placeholder='0.01'
+                                    {...field}
+                                    onChange={(event) => {
+                                      const value = event.target.value
+                                      if (numericDraftRegex.test(value)) {
+                                        field.onChange(value)
+                                      }
+                                    }}
+                                  />
+                                  <InputGroupAddon align='inline-end'>
+                                    {t('per request')}
+                                  </InputGroupAddon>
+                                </InputGroup>
+                              </FormControl>
+                              <FieldDescription>
+                                {t(
+                                  'Cost in USD per request, regardless of tokens used.'
+                                )}
+                              </FieldDescription>
+                              <FormMessage />
+                            </Field>
+                          </FormItem>
+                        )}
+                      />
+                    </FieldGroup>
+                  </TabsContent>
+
+                  <TabsContent value='per-resolution' className='pt-0'>
+                    <FieldGroup className='gap-5'>
+                      <FormField
+                        control={form.control}
+                        name='resolutionPrice'
                         render={({ field }) => (
                           <FormItem className='contents'>
                             <ResolutionPriceTable

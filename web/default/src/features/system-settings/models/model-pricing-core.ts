@@ -24,6 +24,7 @@ export const createModelPricingSchema = (t: (key: string) => string) =>
   z.object({
     name: z.string().min(1, t('Model name is required')),
     price: z.string().optional(),
+    resolutionPrice: z.string().optional(),
     ratio: z.string().optional(),
     cacheRatio: z.string().optional(),
     createCacheRatio: z.string().optional(),
@@ -37,7 +38,7 @@ export type ModelPricingFormValues = z.infer<
   ReturnType<typeof createModelPricingSchema>
 >
 
-export type PricingMode = 'per-token' | 'per-request' | 'tiered_expr'
+export type PricingMode = 'per-token' | 'per-request' | 'per-resolution' | 'tiered_expr'
 
 export type LaneKey =
   | 'completion'
@@ -50,6 +51,7 @@ export type LaneKey =
 export type ModelRatioData = {
   name: string
   price?: string
+  resolutionPrice?: string
   ratio?: string
   cacheRatio?: string
   createCacheRatio?: string

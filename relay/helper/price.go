@@ -164,7 +164,47 @@ func ModelPriceHelper(c *gin.Context, info *relaycommon.RelayInfo, promptTokens 
 }
 
 // ModelPriceHelperPerCall 按次/按量计费的 PriceHelper (MJ、Task)
+// ModelPriceHelperPerCall handles per-call pricing (both fixed price and resolution-based)
+// If the model uses resolution-based pricing, it will extract resolution from context
 func ModelPriceHelperPerCall(c *gin.Context, info *relaycommon.RelayInfo) (types.PriceData, error) {
+	// Check if this model uses resolution-based pricing
+	if billing_setting.GetBillingMode(info.OriginModelName) == billing_setting.BillingModeResolution {
+		// Try to extract resolution from request body or query
+		var size, imageSize string
+
+		// Try to get from context (may be set by adaptor)
+		if val, exists := c.Get("resolution"); exists {
+			if resStr, ok := val.(string); ok {
+				size = resStr
+			}
+		}
+
+		// Try to get from request body
+		if size == "" {
+			var requestBody map[string]interface{}
+			if bodyBytes, exists := c.Get("request_body"); exists {
+				if body, ok := bodyBytes.([]byte); ok {
+					if err := common.Unmarshal(body, &requestBody); err == nil {
+						if s, ok := requestBody["size"].(string); ok {
+							size = s
+						}
+						if s, ok := requestBody["imageSize"].(string); ok {
+							imageSize = s
+						}
+					}
+				}
+			}
+		}
+
+		return ModelPriceHelperResolution(c, info, size, imageSize)
+	}
+
+	// Default: use fixed per-call pricing
+	return modelPriceHelperPerCallFixed(c, info)
+}
+
+// modelPriceHelperPerCallFixed is the original per-call pricing logic
+func modelPriceHelperPerCallFixed(c *gin.Context, info *relaycommon.RelayInfo) (types.PriceData, error) {
 	groupRatioInfo := HandleGroupRatio(c, info)
 
 	modelPrice, success := ratio_setting.GetModelPrice(info.OriginModelName, true)
@@ -218,6 +258,52 @@ func ModelPriceHelperPerCall(c *gin.Context, info *relaycommon.RelayInfo) (types
 		ModelPrice:     modelPrice,
 		ModelRatio:     modelRatio,
 		UsePrice:       usePrice,
+		Quota:          quota,
+		GroupRatioInfo: groupRatioInfo,
+	}
+	return priceData, nil
+}
+
+// ModelPriceHelperResolution handles resolution-based pricing
+// It extracts resolution from request (size or imageSize field) and looks up the price
+func ModelPriceHelperResolution(c *gin.Context, info *relaycommon.RelayInfo, size, imageSize string) (types.PriceData, error) {
+	groupRatioInfo := HandleGroupRatio(c, info)
+
+	// Extract resolution from request
+	resolution := operation_setting.ExtractResolutionFromRequest(size, imageSize)
+
+	// Get resolution price
+	resolutionPrice := operation_setting.GetResolutionPriceForModel(resolution, info.OriginModelName)
+
+	if resolutionPrice == 0 {
+		// Try to fall back to regular per-call pricing
+		modelPrice, success := ratio_setting.GetModelPrice(info.OriginModelName, true)
+		if success {
+			resolutionPrice = modelPrice
+		} else {
+			return types.PriceData{}, fmt.Errorf(
+				"模型 %s 的分辨率 %s 价格未配置，且没有固定价格可用；Resolution %s price for model %s is not configured and no fixed price is available",
+				info.OriginModelName, resolution, resolution, info.OriginModelName,
+			)
+		}
+	}
+
+	var quota int
+	freeModel := false
+
+	quota = int(resolutionPrice * common.QuotaPerUnit * groupRatioInfo.GroupRatio)
+	if !operation_setting.GetQuotaSetting().EnableFreeModelPreConsume {
+		if groupRatioInfo.GroupRatio == 0 || resolutionPrice == 0 {
+			quota = 0
+			freeModel = true
+		}
+	}
+
+	priceData := types.PriceData{
+		FreeModel:      freeModel,
+		ModelPrice:     resolutionPrice,
+		ModelRatio:     -1,
+		UsePrice:       true,
 		Quota:          quota,
 		GroupRatioInfo: groupRatioInfo,
 	}
