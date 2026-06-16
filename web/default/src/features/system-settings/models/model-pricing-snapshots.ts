@@ -112,6 +112,10 @@ export const getPriceSummary = (
     return t('Per-resolution')
   }
   if (row.billingMode === 'per-request') {
+    // Check if this model has resolution-based pricing
+    if (row.resolutionPrice && row.resolutionPrice !== '') {
+      return t('Per-request (resolution-based)')
+    }
     return row.price ? `$${row.price} / ${t('request')}` : t('Unset price')
   }
 
@@ -145,6 +149,10 @@ export const getPriceDetail = (
     return t('Dynamic pricing by resolution')
   }
   if (row.billingMode === 'per-request') {
+    // Check if this model has resolution-based pricing
+    if (row.resolutionPrice && row.resolutionPrice !== '') {
+      return t('Dynamic pricing by resolution')
+    }
     return t('Fixed request price')
   }
 
@@ -247,6 +255,32 @@ export const buildModelSnapshots = ({
     const audio = audioMap[name]?.toString() || ''
     const audioCompletion = audioCompletionMap[name]?.toString() || ''
 
+    // Extract resolution prices for this model from flat format
+    // Flat format: {"1K:dall-e-3": 0.792, "4K:dall-e-3": 1.418}
+    // Convert to: {"1K": 0.792, "4K": 1.418}
+    const modelResolutionPrices: Record<string, number> = {}
+    for (const key in resolutionPriceMap) {
+      if (key.includes(':')) {
+        const [resolution, modelPart] = key.split(':', 2)
+        if (modelPart === name || (modelPart.endsWith('*') && name.startsWith(modelPart.slice(0, -1)))) {
+          const priceValue = resolutionPriceMap[key]
+          if (typeof priceValue === 'number') {
+            modelResolutionPrices[resolution] = priceValue
+          }
+        }
+      } else if (key === name) {
+        // Legacy format: direct model name as key
+        const priceValue = resolutionPriceMap[key]
+        if (typeof priceValue === 'object') {
+          Object.assign(modelResolutionPrices, priceValue)
+        }
+      }
+    }
+
+    const resolutionPrice = Object.keys(modelResolutionPrices).length > 0
+      ? JSON.stringify(modelResolutionPrices)
+      : ''
+
     const modeForModel = billingModeMap[name]
     if (modeForModel === 'tiered_expr') {
       const fullExpr = billingExprMap[name] || ''
@@ -258,6 +292,7 @@ export const buildModelSnapshots = ({
         billingExpr: pureExpr,
         requestRuleExpr,
         price,
+        resolutionPrice,
         ratio,
         cacheRatio: cache,
         createCacheRatio: createCache,
@@ -269,20 +304,12 @@ export const buildModelSnapshots = ({
       }
     }
 
+    // Legacy: standalone resolution mode (treat as per-request with resolution pricing)
     if (modeForModel === 'resolution') {
-      const resPrice = resolutionPriceMap[name]
-      let resPriceStr = ''
-      if (resPrice !== undefined && resPrice !== null) {
-        if (typeof resPrice === 'object') {
-          resPriceStr = JSON.stringify(resPrice)
-        } else {
-          resPriceStr = String(resPrice)
-        }
-      }
       return {
         name,
-        billingMode: 'per-resolution',
-        resolutionPrice: resPriceStr,
+        billingMode: 'per-request',
+        resolutionPrice,
         price,
         ratio,
         cacheRatio: cache,
@@ -298,7 +325,7 @@ export const buildModelSnapshots = ({
     return {
       name,
       price,
-      resolutionPrice: '',
+      resolutionPrice,
       ratio,
       cacheRatio: cache,
       createCacheRatio: createCache,
@@ -306,7 +333,7 @@ export const buildModelSnapshots = ({
       imageRatio: image,
       audioRatio: audio,
       audioCompletionRatio: audioCompletion,
-      billingMode: price !== '' ? 'per-request' : 'per-token',
+      billingMode: price !== '' || resolutionPrice !== '' ? 'per-request' : 'per-token',
       hasConflict:
         price !== '' &&
         (ratio !== '' ||

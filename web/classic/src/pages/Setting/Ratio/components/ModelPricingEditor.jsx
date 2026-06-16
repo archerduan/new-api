@@ -415,7 +415,6 @@ export default function ModelPricingEditor({
                   >
                     <Radio value='per-token'>{t('按量计费')}</Radio>
                     <Radio value='per-request'>{t('按次计费')}</Radio>
-                    <Radio value='per-resolution'>{t('按分辨率')}</Radio>
                     <Radio value='tiered_expr'>{t('表达式/阶梯计费')}</Radio>
                   </RadioGroup>
                   <div className='mt-2 text-xs text-gray-500'>
@@ -443,14 +442,22 @@ export default function ModelPricingEditor({
                 ) : null}
 
                 {selectedModel.billingMode === 'per-request' ? (
-                  <PriceInput
-                    label={t('固定价格')}
-                    value={selectedModel.fixedPrice}
-                    placeholder={t('输入每次调用价格')}
-                    suffix={t('$/次')}
-                    onChange={(value) => handleNumericFieldChange('fixedPrice', value)}
-                    extraText={t('适合 MJ / 任务类等按次收费模型。')}
-                  />
+                  <>
+                    <PriceInput
+                      label={t('固定价格')}
+                      value={selectedModel.fixedPrice}
+                      placeholder={t('输入每次调用价格')}
+                      suffix={t('$/次')}
+                      onChange={(value) => handleNumericFieldChange('fixedPrice', value)}
+                      extraText={t('适合按固定价格计费。留空以使用下方按分辨率定价。')}
+                    />
+                    <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--semi-color-border)' }}>
+                      <ResolutionPriceTable
+                        value={selectedModel.resolutionPrice || ''}
+                        onChange={(value) => handleFieldChange('resolutionPrice', value)}
+                      />
+                    </div>
+                  </>
                 ) : selectedModel.billingMode === 'per-resolution' ? (
                   <ResolutionPriceTable
                     value={selectedModel.resolutionPrice || ''}

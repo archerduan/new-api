@@ -139,16 +139,33 @@ const buildModelState = (name, sourceMaps) => {
     };
   }
 
-  if (billingMode === 'resolution') {
-    const resolutionPriceRaw = sourceMaps.ResolutionPrice?.[name];
-    let resolutionPrice = '';
-    if (resolutionPriceRaw !== undefined && resolutionPriceRaw !== null) {
-      if (typeof resolutionPriceRaw === 'object') {
-        resolutionPrice = JSON.stringify(resolutionPriceRaw);
-      } else {
-        resolutionPrice = String(resolutionPriceRaw);
+  // Extract resolution prices for this model from flat format
+  const extractResolutionPrices = (name, resolutionPriceMap) => {
+    const modelResolutionPrices = {};
+    for (const key in resolutionPriceMap) {
+      if (key.includes(':')) {
+        const [resolution, modelPart] = key.split(':', 2);
+        if (modelPart === name || (modelPart.endsWith('*') && name.startsWith(modelPart.slice(0, -1)))) {
+          const priceValue = resolutionPriceMap[key];
+          if (typeof priceValue === 'number') {
+            modelResolutionPrices[resolution] = priceValue;
+          }
+        }
+      } else if (key === name) {
+        // Legacy format: direct model name as key
+        const priceValue = resolutionPriceMap[key];
+        if (typeof priceValue === 'object') {
+          Object.assign(modelResolutionPrices, priceValue);
+        }
       }
     }
+    return Object.keys(modelResolutionPrices).length > 0
+      ? JSON.stringify(modelResolutionPrices)
+      : '';
+  };
+
+  if (billingMode === 'resolution') {
+    const resolutionPrice = extractResolutionPrices(name, sourceMaps.ResolutionPrice || {});
     return {
       ...EMPTY_MODEL,
       name,
@@ -172,6 +189,7 @@ const buildModelState = (name, sourceMaps) => {
     sourceMaps.AudioCompletionRatio[name],
   );
   const fixedPrice = toNumericString(sourceMaps.ModelPrice[name]);
+  const resolutionPrice = extractResolutionPrices(name, sourceMaps.ResolutionPrice || {});
   const inputPrice = ratioToBasePrice(modelRatio);
   const inputPriceNumber = toNumberOrNull(inputPrice);
   const audioInputPrice =
@@ -184,6 +202,7 @@ const buildModelState = (name, sourceMaps) => {
     name,
     billingMode: hasValue(fixedPrice) ? 'per-request' : 'per-token',
     fixedPrice,
+    resolutionPrice,
     inputPrice,
     completionRatioLocked: completionRatioMeta.locked,
     lockedCompletionRatio: completionRatioMeta.ratio,
@@ -1122,13 +1141,35 @@ export function useModelPricingEditorState({
           if (hasValue(model.resolutionPrice)) {
             try {
               const parsed = JSON.parse(model.resolutionPrice);
-              resolutionOutput.resolution_price_setting[model.name] = parsed;
-            } catch {
-              const num = parseFloat(model.resolutionPrice);
-              if (!isNaN(num)) {
-                resolutionOutput.resolution_price_setting[model.name] = num;
+              // Convert model-specific resolution prices to flat format
+              if (typeof parsed === 'object' && !Array.isArray(parsed)) {
+                Object.entries(parsed).forEach(([resolution, price]) => {
+                  const key = `${resolution}:${model.name}`;
+                  if (typeof price === 'number') {
+                    resolutionOutput.resolution_price_setting[key] = price;
+                  }
+                });
               }
+            } catch {
+              // Ignore invalid JSON
             }
+          }
+        }
+
+        // Per-request mode: also save resolution prices if configured
+        if (model.billingMode === 'per-request' && hasValue(model.resolutionPrice)) {
+          try {
+            const parsed = JSON.parse(model.resolutionPrice);
+            if (typeof parsed === 'object' && !Array.isArray(parsed)) {
+              Object.entries(parsed).forEach(([resolution, price]) => {
+                const key = `${resolution}:${model.name}`;
+                if (typeof price === 'number') {
+                  resolutionOutput.resolution_price_setting[key] = price;
+                }
+              });
+            }
+          } catch {
+            // Ignore invalid JSON
           }
         }
 
@@ -1144,7 +1185,7 @@ export function useModelPricingEditorState({
             }
           });
         } catch (e) {
-          if (model.billingMode !== 'tiered_expr' && model.billingMode !== 'per-resolution') {
+          if (model.billingMode !== 'tiered_expr' && model.billingMode !== 'per-resolution' && model.billingMode !== 'per-request') {
             throw e;
           }
         }

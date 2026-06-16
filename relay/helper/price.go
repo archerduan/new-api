@@ -164,43 +164,70 @@ func ModelPriceHelper(c *gin.Context, info *relaycommon.RelayInfo, promptTokens 
 }
 
 // ModelPriceHelperPerCall 按次/按量计费的 PriceHelper (MJ、Task)
-// ModelPriceHelperPerCall handles per-call pricing (both fixed price and resolution-based)
-// If the model uses resolution-based pricing, it will extract resolution from context
+// Supports both fixed price and resolution-based pricing in per-request mode.
+// Priority: resolution-based pricing > fixed price
 func ModelPriceHelperPerCall(c *gin.Context, info *relaycommon.RelayInfo) (types.PriceData, error) {
-	// Check if this model uses resolution-based pricing
-	if billing_setting.GetBillingMode(info.OriginModelName) == billing_setting.BillingModeResolution {
-		// Try to extract resolution from request body or query
-		var size, imageSize string
+	// Always try to extract resolution from request
+	var size, imageSize string
 
-		// Try to get from context (may be set by adaptor)
-		if val, exists := c.Get("resolution"); exists {
-			if resStr, ok := val.(string); ok {
-				size = resStr
-			}
+	// Try to get from context (may be set by adaptor)
+	if val, exists := c.Get("resolution"); exists {
+		if resStr, ok := val.(string); ok {
+			size = resStr
 		}
+	}
 
-		// Try to get from request body
-		if size == "" {
-			var requestBody map[string]interface{}
-			if bodyBytes, exists := c.Get("request_body"); exists {
-				if body, ok := bodyBytes.([]byte); ok {
-					if err := common.Unmarshal(body, &requestBody); err == nil {
-						if s, ok := requestBody["size"].(string); ok {
-							size = s
-						}
-						if s, ok := requestBody["imageSize"].(string); ok {
-							imageSize = s
-						}
+	// Try to get from request body
+	if size == "" {
+		var requestBody map[string]interface{}
+		if bodyBytes, exists := c.Get("request_body"); exists {
+			if body, ok := bodyBytes.([]byte); ok {
+				if err := common.Unmarshal(body, &requestBody); err == nil {
+					if s, ok := requestBody["size"].(string); ok {
+						size = s
+					}
+					if s, ok := requestBody["imageSize"].(string); ok {
+						imageSize = s
 					}
 				}
 			}
 		}
-
-		return ModelPriceHelperResolution(c, info, size, imageSize)
 	}
 
-	// Default: use fixed per-call pricing
+	// If resolution detected, try resolution-based pricing
+	if size != "" || imageSize != "" {
+		resolution := operation_setting.ExtractResolutionFromRequest(size, imageSize)
+		resolutionPrice := operation_setting.GetResolutionPriceForModel(resolution, info.OriginModelName)
+
+		// If resolution price is configured (> 0), use resolution-based pricing
+		if resolutionPrice > 0 {
+			return modelPriceHelperResolutionInPerCall(c, info, resolutionPrice, resolution)
+		}
+	}
+
+	// Fall back to fixed per-call pricing
 	return modelPriceHelperPerCallFixed(c, info)
+}
+
+// modelPriceHelperResolutionInPerCall handles resolution-based pricing within per-request mode
+func modelPriceHelperResolutionInPerCall(c *gin.Context, info *relaycommon.RelayInfo, price float64, resolution string) (types.PriceData, error) {
+	groupRatioInfo := HandleGroupRatio(c, info)
+
+	var quota int
+	freeModel := false
+
+	quota = int(price * common.QuotaPerUnit * groupRatioInfo.GroupRatio)
+	if !operation_setting.GetQuotaSetting().EnableFreeModelPreConsume {
+		if groupRatioInfo.GroupRatio == 0 || price == 0 {
+			quota = 0
+			freeModel = true
+		}
+	}
+
+	return types.PriceData{
+		Quota:     quota,
+		FreeModel: freeModel,
+	}, nil
 }
 
 // modelPriceHelperPerCallFixed is the original per-call pricing logic

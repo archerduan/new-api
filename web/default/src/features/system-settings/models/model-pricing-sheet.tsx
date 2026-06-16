@@ -547,15 +547,12 @@ export const ModelPricingEditorPanel = forwardRef<
                   onValueChange={handleModeChange}
                   className='gap-4'
                 >
-                  <TabsList className='grid w-full grid-cols-4'>
+                  <TabsList className='grid w-full grid-cols-3'>
                     <TabsTrigger value='per-token'>
                       {t('Per-token')}
                     </TabsTrigger>
                     <TabsTrigger value='per-request'>
                       {t('Per-request')}
-                    </TabsTrigger>
-                    <TabsTrigger value='per-resolution'>
-                      {t('Per-resolution')}
                     </TabsTrigger>
                     <TabsTrigger value='tiered_expr'>
                       {t('Expression')}
@@ -634,7 +631,7 @@ export const ModelPricingEditorPanel = forwardRef<
                               </FormControl>
                               <FieldDescription>
                                 {t(
-                                  'Cost in USD per request, regardless of tokens used.'
+                                  'Cost in USD per request, regardless of tokens used. Leave empty to use resolution-based pricing below.'
                                 )}
                               </FieldDescription>
                               <FormMessage />
@@ -642,24 +639,22 @@ export const ModelPricingEditorPanel = forwardRef<
                           </FormItem>
                         )}
                       />
-                    </FieldGroup>
-                  </TabsContent>
 
-                  <TabsContent value='per-resolution' className='pt-0'>
-                    <FieldGroup className='gap-5'>
-                      <FormField
-                        control={form.control}
-                        name='resolutionPrice'
-                        render={({ field }) => (
-                          <FormItem className='contents'>
-                            <ResolutionPriceTable
-                              value={field.value || ''}
-                              onChange={field.onChange}
-                              disabled={false}
-                            />
-                          </FormItem>
-                        )}
-                      />
+                      <div className='border-t pt-5'>
+                        <FormField
+                          control={form.control}
+                          name='resolutionPrice'
+                          render={({ field }) => (
+                            <FormItem className='contents'>
+                              <ResolutionPriceTable
+                                value={field.value || ''}
+                                onChange={field.onChange}
+                                disabled={false}
+                              />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
                     </FieldGroup>
                   </TabsContent>
 
