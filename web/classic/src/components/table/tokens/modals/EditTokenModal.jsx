@@ -56,6 +56,7 @@ import {
 } from '@douyinfe/semi-icons';
 import { useTranslation } from 'react-i18next';
 import { StatusContext } from '../../../../context/Status';
+import GroupPrioritySelector from '../../../common/GroupPrioritySelector';
 
 const { Text, Title } = Typography;
 
@@ -425,6 +426,18 @@ const EditTokenModal = (props) => {
                       />
                     )}
                   </Col>
+                  {/* 分组优先级排序 */}
+                  {Array.isArray(values.group) && values.group.length > 1 && (
+                    <Col span={24}>
+                      <GroupPrioritySelector
+                        value={values.group}
+                        onChange={(newValue) => {
+                          formApiRef.current?.setValue('group', newValue);
+                        }}
+                        allGroups={groups}
+                      />
+                    </Col>
+                  )}
                   <Col
                     span={24}
                     style={{

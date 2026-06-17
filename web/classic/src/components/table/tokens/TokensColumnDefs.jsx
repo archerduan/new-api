@@ -104,6 +104,46 @@ const renderGroupColumn = (text, record, t, groupRatios = {}) => {
       </Tooltip>
     );
   }
+
+  // Handle multiple groups (comma-separated)
+  if (text && text.includes(',')) {
+    const groups = text.split(',').map(g => g.trim()).filter(Boolean);
+
+    return (
+      <div className='flex flex-wrap items-center gap-1'>
+        {groups.map((group, index) => {
+          const ratio = groupRatios[group];
+          return (
+            <div key={`${group}-${index}`} className='flex items-center gap-1'>
+              {index > 0 && (
+                <span className='text-gray-400 text-xs'>→</span>
+              )}
+              <Tooltip
+                content={t('优先级') + ' ' + (index + 1)}
+                position='top'
+              >
+                <span className='flex items-center gap-1'>
+                  {renderGroup(group)}
+                  {ratio !== undefined && (
+                    <Tag size='small' color='green' shape='circle'>
+                      {ratio}x
+                    </Tag>
+                  )}
+                </span>
+              </Tooltip>
+            </div>
+          );
+        })}
+        {groups.length > 1 && (
+          <Tag size='small' color='blue' shape='circle'>
+            +{groups.length - 1}
+          </Tag>
+        )}
+      </div>
+    );
+  }
+
+  // Single group
   const ratio = groupRatios[text];
   return (
     <span className='flex items-center gap-1'>
