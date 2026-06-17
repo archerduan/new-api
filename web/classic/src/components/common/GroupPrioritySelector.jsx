@@ -19,7 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 
 import React, { useState } from 'react';
 import { Typography, Tag, Button, Space, Banner } from '@douyinfe/semi-ui';
-import { IconHandle, IconClose } from '@douyinfe/semi-icons';
+import { IconHandle, IconClose, IconChevronUp, IconChevronDown } from '@douyinfe/semi-icons';
 import { useTranslation } from 'react-i18next';
 
 const { Text } = Typography;
@@ -201,14 +201,14 @@ const GroupPrioritySelector = ({ value = [], onChange, allGroups = [], disabled 
                   <Button
                     size='small'
                     type='tertiary'
-                    icon='↑'
+                    icon={<IconChevronUp />}
                     onClick={() => handleMoveUp(index)}
                     disabled={index === 0}
                   />
                   <Button
                     size='small'
                     type='tertiary'
-                    icon='↓'
+                    icon={<IconChevronDown />}
                     onClick={() => handleMoveDown(index)}
                     disabled={index === value.length - 1}
                   />

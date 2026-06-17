@@ -108,10 +108,13 @@ const renderGroupColumn = (text, record, t, groupRatios = {}) => {
   // Handle multiple groups (comma-separated)
   if (text && text.includes(',')) {
     const groups = text.split(',').map(g => g.trim()).filter(Boolean);
+    const maxVisible = 3; // Show first 3 groups
+    const visibleGroups = groups.slice(0, maxVisible);
+    const remainingGroups = groups.slice(maxVisible);
 
     return (
       <div className='flex flex-wrap items-center gap-1'>
-        {groups.map((group, index) => {
+        {visibleGroups.map((group, index) => {
           const ratio = groupRatios[group];
           return (
             <div key={`${group}-${index}`} className='flex items-center gap-1'>
@@ -134,10 +137,30 @@ const renderGroupColumn = (text, record, t, groupRatios = {}) => {
             </div>
           );
         })}
-        {groups.length > 1 && (
-          <Tag size='small' color='blue' shape='circle'>
-            +{groups.length - 1}
-          </Tag>
+        {remainingGroups.length > 0 && (
+          <Tooltip
+            content={
+              <div className='space-y-1'>
+                {remainingGroups.map((group, index) => {
+                  const ratio = groupRatios[group];
+                  return (
+                    <div key={group} className='flex items-center gap-2'>
+                      <span>{t('优先级')} {maxVisible + index + 1}:</span>
+                      <span className='font-medium'>{group}</span>
+                      {ratio !== undefined && (
+                        <span className='text-xs'>({ratio}x)</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            }
+            position='top'
+          >
+            <Tag size='small' color='blue' shape='circle' className='cursor-pointer'>
+              +{remainingGroups.length}
+            </Tag>
+          </Tooltip>
         )}
       </div>
     );
