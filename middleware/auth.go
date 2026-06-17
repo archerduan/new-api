@@ -391,6 +391,8 @@ func TokenAuth() func(c *gin.Context) {
 
 		userGroup := userCache.Group
 		tokenGroup := token.Group
+		var accessibleGroups []string // Declare outside to use after SetupContextForToken
+
 		if tokenGroup != "" {
 			// Parse multiple groups from token (comma-separated)
 			tokenGroups := token.GetGroups()
@@ -403,7 +405,7 @@ func TokenAuth() func(c *gin.Context) {
 			userUsableGroups := service.GetUserUsableGroups(userGroup)
 
 			// Filter groups that user has access to
-			accessibleGroups := make([]string, 0, len(tokenGroups))
+			accessibleGroups = make([]string, 0, len(tokenGroups))
 			inaccessibleGroups := make([]string, 0)
 
 			for _, group := range tokenGroups {
@@ -429,6 +431,7 @@ func TokenAuth() func(c *gin.Context) {
 			userGroup = accessibleGroups[0]
 
 			// Store accessible groups in context for multi-group model listing
+			// Note: This will be overwritten by SetupContextForToken, we'll restore it after
 			common.SetContextKey(c, constant.ContextKeyTokenGroup, strings.Join(accessibleGroups, ","))
 		}
 		common.SetContextKey(c, constant.ContextKeyUsingGroup, userGroup)
@@ -436,6 +439,12 @@ func TokenAuth() func(c *gin.Context) {
 		err = SetupContextForToken(c, token, parts...)
 		if err != nil {
 			return
+		}
+
+		// Restore the multi-group setting after SetupContextForToken
+		// SetupContextForToken overwrites ContextKeyTokenGroup with token.Group
+		if len(accessibleGroups) > 0 {
+			common.SetContextKey(c, constant.ContextKeyTokenGroup, strings.Join(accessibleGroups, ","))
 		}
 		c.Next()
 	}

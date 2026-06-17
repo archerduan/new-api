@@ -82,7 +82,15 @@ func Distribute() func(c *gin.Context) {
 					return
 				}
 				var selectGroup string
+				// Get token groups (may be multiple comma-separated groups)
+				tokenGroup := common.GetContextKeyString(c, constant.ContextKeyTokenGroup)
 				usingGroup := common.GetContextKeyString(c, constant.ContextKeyUsingGroup)
+
+				// If tokenGroup is empty, fall back to usingGroup
+				if tokenGroup == "" {
+					tokenGroup = usingGroup
+				}
+
 				// check path is /pg/chat/completions
 				if strings.HasPrefix(c.Request.URL.Path, "/pg/chat/completions") {
 					playgroundRequest := &dto.PlayGroundRequest{}
@@ -96,16 +104,35 @@ func Distribute() func(c *gin.Context) {
 							abortWithOpenAiMessage(c, http.StatusForbidden, i18n.T(c, i18n.MsgDistributorGroupAccessDenied))
 							return
 						}
+						tokenGroup = playgroundRequest.Group
 						usingGroup = playgroundRequest.Group
 						common.SetContextKey(c, constant.ContextKeyUsingGroup, usingGroup)
+						common.SetContextKey(c, constant.ContextKeyTokenGroup, tokenGroup)
 					}
 				}
 
-				if preferredChannelID, found := service.GetPreferredChannelByAffinity(c, modelRequest.Model, usingGroup); found {
+				if preferredChannelID, found := service.GetPreferredChannelByAffinity(c, modelRequest.Model, tokenGroup); found {
 					affinityUsable := false
 					preferred, err := model.CacheGetChannel(preferredChannelID)
 					if err == nil && preferred != nil && preferred.Status == common.ChannelStatusEnabled {
-						if usingGroup == "auto" {
+						// Handle multi-group token affinity
+						if strings.Contains(tokenGroup, ",") {
+							// Multi-group token: check each group in priority order
+							groups := strings.Split(tokenGroup, ",")
+							for _, g := range groups {
+								g = strings.TrimSpace(g)
+								if g == "" {
+									continue
+								}
+								if model.IsChannelEnabledForGroupModel(g, modelRequest.Model, preferred.Id) {
+									channel = preferred
+									selectGroup = g
+									affinityUsable = true
+									service.MarkChannelAffinityUsed(c, g, preferred.Id)
+									break
+								}
+							}
+						} else if tokenGroup == "auto" {
 							userGroup := common.GetContextKeyString(c, constant.ContextKeyUserGroup)
 							autoGroups := service.GetUserAutoGroup(userGroup)
 							for _, g := range autoGroups {
@@ -118,11 +145,11 @@ func Distribute() func(c *gin.Context) {
 									break
 								}
 							}
-						} else if model.IsChannelEnabledForGroupModel(usingGroup, modelRequest.Model, preferred.Id) {
+						} else if model.IsChannelEnabledForGroupModel(tokenGroup, modelRequest.Model, preferred.Id) {
 							channel = preferred
-							selectGroup = usingGroup
+							selectGroup = tokenGroup
 							affinityUsable = true
-							service.MarkChannelAffinityUsed(c, usingGroup, preferred.Id)
+							service.MarkChannelAffinityUsed(c, tokenGroup, preferred.Id)
 						}
 					}
 					if !affinityUsable && !service.ShouldKeepChannelAffinityOnChannelDisabled() {
@@ -134,13 +161,16 @@ func Distribute() func(c *gin.Context) {
 					channel, selectGroup, err = service.CacheGetRandomSatisfiedChannel(&service.RetryParam{
 						Ctx:        c,
 						ModelName:  modelRequest.Model,
-						TokenGroup: usingGroup,
+						TokenGroup: tokenGroup,
 						Retry:      common.GetPointer(0),
 					})
 					if err != nil {
-						showGroup := usingGroup
-						if usingGroup == "auto" {
+						showGroup := tokenGroup
+						if tokenGroup == "auto" {
 							showGroup = fmt.Sprintf("auto(%s)", selectGroup)
+						} else if strings.Contains(tokenGroup, ",") {
+							// Multi-group case
+							showGroup = fmt.Sprintf("%s(%s)", tokenGroup, selectGroup)
 						}
 						message := i18n.T(c, i18n.MsgDistributorGetChannelFailed, map[string]any{"Group": showGroup, "Model": modelRequest.Model, "Error": err.Error()})
 						// 如果错误，但是渠道不为空，说明是数据库一致性问题
@@ -152,7 +182,7 @@ func Distribute() func(c *gin.Context) {
 						return
 					}
 					if channel == nil {
-						abortWithOpenAiMessage(c, http.StatusServiceUnavailable, i18n.T(c, i18n.MsgDistributorNoAvailableChannel, map[string]any{"Group": usingGroup, "Model": modelRequest.Model}), types.ErrorCodeModelNotFound)
+						abortWithOpenAiMessage(c, http.StatusServiceUnavailable, i18n.T(c, i18n.MsgDistributorNoAvailableChannel, map[string]any{"Group": tokenGroup, "Model": modelRequest.Model}), types.ErrorCodeModelNotFound)
 						return
 					}
 				}
