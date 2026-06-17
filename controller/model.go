@@ -194,6 +194,23 @@ func getModelListGroups(c *gin.Context) (modelListGroups, error) {
 		}, nil
 	}
 
+	// Handle multiple groups (comma-separated)
+	if tokenGroup != "" && strings.Contains(tokenGroup, ",") {
+		tokenGroups := strings.Split(tokenGroup, ",")
+		ownerGroups := make([]string, 0, len(tokenGroups))
+		for _, group := range tokenGroups {
+			g := strings.TrimSpace(group)
+			if g != "" {
+				ownerGroups = append(ownerGroups, g)
+			}
+		}
+		return modelListGroups{
+			userGroup:   userGroup,
+			tokenGroup:  tokenGroup,
+			ownerGroups: ownerGroups,
+		}, nil
+	}
+
 	group := userGroup
 	if tokenGroup != "" {
 		group = tokenGroup
@@ -246,9 +263,10 @@ func ListModels(c *gin.Context, modelType int) {
 		}
 	} else {
 		var models []string
-		if groups.tokenGroup == "auto" {
-			for _, autoGroup := range ownerGroups {
-				groupModels := model.GetGroupEnabledModels(autoGroup)
+		// Handle multiple groups or auto group
+		if groups.tokenGroup == "auto" || len(ownerGroups) > 1 {
+			for _, ownerGroup := range ownerGroups {
+				groupModels := model.GetGroupEnabledModels(ownerGroup)
 				for _, g := range groupModels {
 					if !common.StringsContains(models, g) {
 						models = append(models, g)

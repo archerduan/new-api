@@ -392,19 +392,44 @@ func TokenAuth() func(c *gin.Context) {
 		userGroup := userCache.Group
 		tokenGroup := token.Group
 		if tokenGroup != "" {
-			// check common.UserUsableGroups[userGroup]
-			if _, ok := service.GetUserUsableGroups(userGroup)[tokenGroup]; !ok {
-				abortWithOpenAiMessage(c, http.StatusForbidden, fmt.Sprintf("无权访问 %s 分组", tokenGroup))
+			// Parse multiple groups from token (comma-separated)
+			tokenGroups := token.GetGroups()
+			if len(tokenGroups) == 0 {
+				abortWithOpenAiMessage(c, http.StatusForbidden, "Token 分组配置为空")
 				return
 			}
-			// check group in common.GroupRatio
-			if !ratio_setting.ContainsGroupRatio(tokenGroup) {
-				if tokenGroup != "auto" {
-					abortWithOpenAiMessage(c, http.StatusForbidden, fmt.Sprintf("分组 %s 已被弃用", tokenGroup))
-					return
+
+			// Get user's usable groups
+			userUsableGroups := service.GetUserUsableGroups(userGroup)
+
+			// Filter groups that user has access to
+			accessibleGroups := make([]string, 0, len(tokenGroups))
+			inaccessibleGroups := make([]string, 0)
+
+			for _, group := range tokenGroups {
+				if _, ok := userUsableGroups[group]; ok || group == "auto" {
+					// Check if group exists in ratio settings (unless it's "auto")
+					if group != "auto" && !ratio_setting.ContainsGroupRatio(group) {
+						inaccessibleGroups = append(inaccessibleGroups, group)
+						continue
+					}
+					accessibleGroups = append(accessibleGroups, group)
+				} else {
+					inaccessibleGroups = append(inaccessibleGroups, group)
 				}
 			}
-			userGroup = tokenGroup
+
+			// If no accessible groups, reject the request
+			if len(accessibleGroups) == 0 {
+				abortWithOpenAiMessage(c, http.StatusForbidden, fmt.Sprintf("无权访问 %s 分组", strings.Join(inaccessibleGroups, ",")))
+				return
+			}
+
+			// Use the first accessible group as the using group for single-group logic
+			userGroup = accessibleGroups[0]
+
+			// Store accessible groups in context for multi-group model listing
+			common.SetContextKey(c, constant.ContextKeyTokenGroup, strings.Join(accessibleGroups, ","))
 		}
 		common.SetContextKey(c, constant.ContextKeyUsingGroup, userGroup)
 
