@@ -194,7 +194,6 @@ export function useApiKeysColumns(): ColumnDef<ApiKey>[] {
       cell: ({ row }) => {
         const apiKey = row.original
         const group = row.getValue('group') as string
-        const ratio = group && group !== 'auto' ? groupRatios[group] : undefined
 
         if (group === 'auto') {
           return (
@@ -223,6 +222,70 @@ export function useApiKeysColumns(): ColumnDef<ApiKey>[] {
             </Tooltip>
           )
         }
+
+        // Handle multiple groups (comma-separated)
+        if (group && group.includes(',')) {
+          const groups = group.split(',').map(g => g.trim()).filter(Boolean)
+          const maxVisible = 3 // Show first 3 groups
+          const visibleGroups = groups.slice(0, maxVisible)
+          const remainingGroups = groups.slice(maxVisible)
+
+          return (
+            <div className='flex flex-wrap items-center gap-1'>
+              {visibleGroups.map((g, index) => {
+                const ratio = groupRatios[g]
+                return (
+                  <div key={`${g}-${index}`} className='inline-flex items-center gap-1'>
+                    {index > 0 && (
+                      <span className='text-muted-foreground text-xs'>→</span>
+                    )}
+                    <Tooltip>
+                      <TooltipTrigger render={<span />}>
+                        <GroupBadge group={g} ratio={ratio} />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <span className='text-xs'>
+                          {t('优先级')} {index + 1}
+                        </span>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                )
+              })}
+              {remainingGroups.length > 0 && (
+                <Tooltip>
+                  <TooltipTrigger render={<span />}>
+                    <StatusBadge
+                      label={`+${remainingGroups.length}`}
+                      variant='info'
+                      copyable={false}
+                      className='cursor-pointer'
+                    />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <div className='space-y-1 text-xs'>
+                      {remainingGroups.map((g, index) => {
+                        const ratio = groupRatios[g]
+                        return (
+                          <div key={g} className='flex items-center gap-2'>
+                            <span>{t('优先级')} {maxVisible + index + 1}:</span>
+                            <span className='font-medium'>{g}</span>
+                            {ratio !== undefined && (
+                              <span>({ratio}x)</span>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </div>
+          )
+        }
+
+        // Single group
+        const ratio = groupRatios[group]
         return <GroupBadge group={group} ratio={ratio} />
       },
       size: 160,

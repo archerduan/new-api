@@ -79,6 +79,7 @@ import {
   ApiKeyGroupCombobox,
   type ApiKeyGroupOption,
 } from './api-key-group-combobox'
+import { GroupPrioritySelector } from './group-priority-selector'
 import { useApiKeys } from './api-keys-provider'
 
 type ApiKeyMutateDrawerProps = {
@@ -325,6 +326,15 @@ export function ApiKeysMutateDrawer({
                   </FormItem>
                 )}
               />
+
+              {/* Group priority selector - show when multiple groups selected */}
+              {selectedGroup.length > 1 && (
+                <GroupPrioritySelector
+                  value={selectedGroup}
+                  onChange={(newValue) => form.setValue('groups', newValue)}
+                  allGroups={groups}
+                />
+              )}
 
               {selectedGroup.includes('auto') && (
                 <FormField
