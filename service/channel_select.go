@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
@@ -66,6 +67,18 @@ func (p *RetryParam) ResetRetryNextTry() {
 //   - When GetRandomSatisfiedChannel returns nil (priorities exhausted), moves to next group.
 //     当 GetRandomSatisfiedChannel 返回 nil（优先级用完）时，切换到下一个分组。
 //
+// For multi-group tokens (comma-separated groups):
+// 对于多分组令牌（逗号分隔的分组）：
+//
+//   - Groups are tried in the order specified in the token configuration.
+//     按令牌配置中指定的顺序尝试分组。
+//
+//   - The first group in the list has the highest priority.
+//     列表中的第一个分组具有最高优先级。
+//
+//   - Uses the same retry mechanism as "auto" group.
+//     使用与 "auto" 分组相同的重试机制。
+//
 // Example flow (2 groups, each with 2 priorities, RetryTimes=3):
 // 示例流程（2个分组，每个有2个优先级，RetryTimes=3）：
 //
@@ -86,11 +99,32 @@ func CacheGetRandomSatisfiedChannel(param *RetryParam) (*model.Channel, string, 
 	selectGroup := param.TokenGroup
 	userGroup := common.GetContextKeyString(param.Ctx, constant.ContextKeyUserGroup)
 
-	if param.TokenGroup == "auto" {
-		if len(setting.GetAutoGroups()) == 0 {
-			return nil, selectGroup, errors.New("auto groups is not enabled")
+	// Check if token has multiple groups (comma-separated)
+	// 检查令牌是否有多个分组（逗号分隔）
+	isMultiGroup := len(param.TokenGroup) > 0 &&
+		param.TokenGroup != "auto" &&
+		strings.Contains(param.TokenGroup, ",")
+
+	if param.TokenGroup == "auto" || isMultiGroup {
+		var targetGroups []string
+
+		if param.TokenGroup == "auto" {
+			if len(setting.GetAutoGroups()) == 0 {
+				return nil, selectGroup, errors.New("auto groups is not enabled")
+			}
+			targetGroups = GetUserAutoGroup(userGroup)
+		} else {
+			// Multi-group token: split by comma and use in order
+			// 多分组令牌：按逗号分隔并按顺序使用
+			splitGroups := strings.Split(param.TokenGroup, ",")
+			targetGroups = make([]string, 0, len(splitGroups))
+			for _, g := range splitGroups {
+				trimmed := strings.TrimSpace(g)
+				if trimmed != "" {
+					targetGroups = append(targetGroups, trimmed)
+				}
+			}
 		}
-		autoGroups := GetUserAutoGroup(userGroup)
 
 		// startGroupIndex: the group index to start searching from
 		// startGroupIndex: 开始搜索的分组索引
@@ -103,8 +137,8 @@ func CacheGetRandomSatisfiedChannel(param *RetryParam) (*model.Channel, string, 
 			}
 		}
 
-		for i := startGroupIndex; i < len(autoGroups); i++ {
-			autoGroup := autoGroups[i]
+		for i := startGroupIndex; i < len(targetGroups); i++ {
+			targetGroup := targetGroups[i]
 			// Calculate priorityRetry for current group
 			// 计算当前分组的 priorityRetry
 			priorityRetry := param.GetRetry()
@@ -113,13 +147,13 @@ func CacheGetRandomSatisfiedChannel(param *RetryParam) (*model.Channel, string, 
 			if i > startGroupIndex {
 				priorityRetry = 0
 			}
-			logger.LogDebug(param.Ctx, "Auto selecting group: %s, priorityRetry: %d", autoGroup, priorityRetry)
+			logger.LogDebug(param.Ctx, "Selecting group: %s (multi-group: %v), priorityRetry: %d", targetGroup, isMultiGroup, priorityRetry)
 
-			channel, _ = model.GetRandomSatisfiedChannel(autoGroup, param.ModelName, priorityRetry)
+			channel, _ = model.GetRandomSatisfiedChannel(targetGroup, param.ModelName, priorityRetry)
 			if channel == nil {
 				// Current group has no available channel for this model, try next group
 				// 当前分组没有该模型的可用渠道，尝试下一个分组
-				logger.LogDebug(param.Ctx, "No available channel in group %s for model %s at priorityRetry %d, trying next group", autoGroup, param.ModelName, priorityRetry)
+				logger.LogDebug(param.Ctx, "No available channel in group %s for model %s at priorityRetry %d, trying next group", targetGroup, param.ModelName, priorityRetry)
 				// 重置状态以尝试下一个分组
 				common.SetContextKey(param.Ctx, constant.ContextKeyAutoGroupIndex, i+1)
 				common.SetContextKey(param.Ctx, constant.ContextKeyAutoGroupRetryIndex, 0)
@@ -128,9 +162,9 @@ func CacheGetRandomSatisfiedChannel(param *RetryParam) (*model.Channel, string, 
 				param.SetRetry(0)
 				continue
 			}
-			common.SetContextKey(param.Ctx, constant.ContextKeyAutoGroup, autoGroup)
-			selectGroup = autoGroup
-			logger.LogDebug(param.Ctx, "Auto selected group: %s", autoGroup)
+			common.SetContextKey(param.Ctx, constant.ContextKeyAutoGroup, targetGroup)
+			selectGroup = targetGroup
+			logger.LogDebug(param.Ctx, "Selected group: %s", targetGroup)
 
 			// Prepare state for next retry
 			// 为下一次重试准备状态
@@ -139,7 +173,7 @@ func CacheGetRandomSatisfiedChannel(param *RetryParam) (*model.Channel, string, 
 				// This request still uses current group, but next retry will use next group
 				// 当前分组已用完所有重试次数，准备切换到下一个分组
 				// 本次请求仍使用当前分组，但下次重试将使用下一个分组
-				logger.LogDebug(param.Ctx, "Current group %s retries exhausted (priorityRetry=%d >= RetryTimes=%d), preparing switch to next group for next retry", autoGroup, priorityRetry, common.RetryTimes)
+				logger.LogDebug(param.Ctx, "Current group %s retries exhausted (priorityRetry=%d >= RetryTimes=%d), preparing switch to next group for next retry", targetGroup, priorityRetry, common.RetryTimes)
 				common.SetContextKey(param.Ctx, constant.ContextKeyAutoGroupIndex, i+1)
 				// Reset retry counter so outer loop can continue for next group
 				// 重置重试计数器，以便外层循环可以为下一个分组继续
